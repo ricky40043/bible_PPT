@@ -1,4 +1,4 @@
-// v1.0.1 - Layout and Deployment Fixed
+// v1.0.2 - Layout and Deployment Fixed
 import { useState, useEffect, useRef } from 'react'
 import { Download, Book as BookIcon, Monitor, ChevronLeft, ChevronRight, X } from 'lucide-react'
 import { QRCodeSVG } from 'qrcode.react'
