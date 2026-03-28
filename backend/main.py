@@ -135,3 +135,52 @@ def generate_ppt(req: GenerateRequest):
         )
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+
+# --- 啟動與診斷日誌 (用於 Cloud Run) ---
+import sys
+print(f"Python version: {sys.version}")
+print(f"Current working directory: {os.getcwd()}")
+
+# 修正：確保我們能找到前端編譯產物
+base_dir = os.path.dirname(os.path.abspath(__file__))
+# 考慮到 Dockerfile 映射路徑，檢查 /app/frontend/dist
+frontend_path = os.path.join(base_dir, "frontend", "dist")
+
+if not os.path.exists(frontend_path):
+    # 最後嘗試檢查當前目錄下的 frontend/dist
+    frontend_path = os.path.join(os.getcwd(), "frontend", "dist")
+
+print(f"Targeting frontend path: {frontend_path}")
+
+if os.path.exists(frontend_path):
+    print(">>> 成功定位前端資源，正在掛載靜態路由...")
+    # 掛載資產目錄 (Vite 編譯後的 assets)
+    assets_dir = os.path.join(frontend_path, "assets")
+    if os.path.exists(assets_dir):
+        app.mount("/assets", StaticFiles(directory=assets_dir), name="assets")
+        print(f"Mounted /assets from {assets_dir}")
+
+    # 退回路由：確保 React Router 的所有路徑都能正確載入 index.html
+    @app.get("/{full_path:path}")
+    async def serve_frontend(full_path: str):
+        # 排除 API 與 WebSocket 請求
+        if full_path.startswith("api") or full_path.startswith("ws"):
+            return None
+        
+        file_path = os.path.join(frontend_path, full_path)
+        if os.path.isfile(file_path):
+            return FileResponse(file_path)
+        
+        # 預設返回 index.html (SPA)
+        return FileResponse(os.path.join(frontend_path, "index.html"))
+    print(">>> 前端託管配置完成。")
+else:
+    print(">>> 警告: 未能找到前端靜態目錄。")
+
+# 注意：Cloud Run 偏好直接透過環境變數 PORT 監聽，這裏設為內建啟動模式
+if __name__ == "__main__":
+    import uvicorn
+    # 直接讀取容器提供的 PORT
+    port = int(os.environ.get("PORT", 8080))
+    print(f">>> 伺服器啟動中，監聽埠號: {port}")
+    uvicorn.run("main:app", host="0.0.0.0", port=port)

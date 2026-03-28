@@ -1,0 +1,28 @@
+steps:
+  # 1. 構建 Docker 鏡像
+  - name: 'gcr.io/cloud-builders/docker'
+    args: ['build', '-t', 'gcr.io/$PROJECT_ID/bible-ppt-generator', '.']
+
+  # 2. 推送鏡像到容器註冊表
+  - name: 'gcr.io/cloud-builders/docker'
+    args: ['push', 'gcr.io/$PROJECT_ID/bible-ppt-generator']
+
+  # 3. 部署到 Cloud Run (移除標籤以避免與組織政策衝突)
+  - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
+    entrypoint: gcloud
+    args:
+      - 'run'
+      - 'deploy'
+      - 'bible-ppt-generator'
+      - '--image'
+      - 'gcr.io/$PROJECT_ID/bible-ppt-generator'
+      - '--region'
+      - 'asia-east1'
+      - '--platform'
+      - 'managed'
+      - '--quiet' # 避免等待使用者確認
+      - '--timeout'
+      - '600'     # 延長啟動時間防止超時
+
+images:
+  - 'gcr.io/$PROJECT_ID/bible-ppt-generator'

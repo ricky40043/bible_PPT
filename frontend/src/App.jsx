@@ -2,8 +2,11 @@ import { useState, useEffect, useRef } from 'react'
 import { Download, Book as BookIcon, Monitor, ChevronLeft, ChevronRight, X } from 'lucide-react'
 import { QRCodeSVG } from 'qrcode.react'
 
-const API = 'http://localhost:5001'
-const WS_URL = 'ws://localhost:5001/ws'
+const isProd = window.location.hostname !== 'localhost'
+const API = isProd ? window.location.origin : 'http://localhost:5001'
+const WS_URL = isProd 
+  ? `${window.location.protocol === 'https:' ? 'wss' : 'ws'}://${window.location.host}/ws`
+  : 'ws://localhost:5001/ws'
 
 function App() {
   const [versions, setVersions] = useState([])
