@@ -11,3 +11,5 @@
 ## 部署說明
 本專案已配置 `cloudbuild.yaml` 與 `Dockerfile`。
 部署網址：[https://bible-ppt-generator-996480099740.asia-east1.run.app](https://bible-ppt-generator-996480099740.asia-east1.run.app)
+
+🚀 目前 CI/CD 已全面啟動！每次推送均會自動更新雲端服務。
