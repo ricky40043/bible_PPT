@@ -1,4 +1,4 @@
-# Dockerfile 4.0 - 終極穩定版 (解決 OpenCC 與相關依賴崩潰)
+# Dockerfile 5.0 - 生產穩定版 (Gunicorn)
 FROM node:20-slim AS frontend-build
 WORKDIR /app/frontend
 COPY frontend/package*.json ./
@@ -6,23 +6,24 @@ RUN npm install
 COPY frontend/ ./
 RUN npm run build
 
-# 使用完整版 Python 以確保 libxml, libjpeg, OpenCC 字典等系統依賴完整
 FROM python:3.10
 WORKDIR /app
 
-# 安裝基本依賴
+# 安裝 Python 依賴與 Gunicorn (生產級啟動器)
 COPY backend/requirements.txt ./
-RUN pip install --no-cache-dir -r requirements.txt
+RUN pip install --no-cache-dir -r requirements.txt gunicorn
 
-# 複製代碼
+# 複製後端 Python 文件
 COPY backend/*.py ./
+
+# 複製前端成品
+# 這裡確保 frontend/dist 的路徑與 main.py 相符
+RUN mkdir -p frontend/dist
 COPY --from=frontend-build /app/frontend/dist ./frontend/dist
 
 ENV PORT=8080
 ENV PYTHONUNBUFFERED=1
 
-# 確保輸出編碼為 UTF-8
-ENV LANG C.UTF-8
-ENV LC_ALL C.UTF-8
-
-CMD uvicorn main:app --host 0.0.0.0 --port $PORT
+# 使用 Gunicorn 啟動。這比單純的 uvicorn 更能處理啟動時的超時與健康檢查問題
+# $PORT 會由 Cloud Run 自動注入
+CMD gunicorn main:app --workers 1 --worker-class uvicorn.workers.UvicornWorker --bind 0.0.0.0:$PORT --timeout 120
