@@ -1,0 +1,597 @@
+:root {
+  --bg-color: #0f172a;
+  --panel-bg: rgba(30, 41, 59, 0.7);
+  --border-color: rgba(255, 255, 255, 0.1);
+  --text-main: #f8fafc;
+  --text-muted: #94a3b8;
+  --accent: #3b82f6;
+}
+
+.form-row {
+  display: flex;
+  gap: 1rem;
+}
+
+.form-group.half {
+  flex: 1;
+}
+
+/* ── PPT Slide Preview Card ─────────────────────────────────────────────── */
+.slide-preview {
+  position: relative;
+  background: #000;
+  border-radius: 10px;
+  border: 1px solid rgba(255, 255, 0, 0.25);
+  padding: 1rem 1.2rem 2.4rem 1.2rem;
+  margin: 0.5rem 0;
+  min-height: 90px;
+  overflow: hidden;
+  box-shadow: 0 0 0 1px rgba(255,255,255,0.05), 0 8px 24px rgba(0,0,0,0.5);
+  transition: border-color 0.3s ease;
+}
+
+.slide-preview:hover {
+  border-color: rgba(255, 255, 0, 0.5);
+}
+
+/* Yellow bold title */
+.slide-preview-title {
+  color: #ffff00;
+  font-family: 'Noto Sans TC', 'PingFang TC', sans-serif;
+  font-size: 1.05rem;
+  font-weight: 700;
+  margin-bottom: 0.55rem;
+  letter-spacing: 0.02em;
+}
+
+/* Verse body row */
+.slide-preview-body {
+  display: flex;
+  align-items: baseline;
+  gap: 0.5rem;
+}
+
+/* White small verse number */
+.slide-preview-num {
+  color: #ffffff;
+  font-size: 0.75rem;
+  font-weight: 700;
+  flex-shrink: 0;
+  opacity: 0.9;
+}
+
+/* White italic placeholder text */
+.slide-preview-text {
+  color: rgba(255,255,255,0.55);
+  font-family: 'Noto Sans TC', 'PingFang TC', sans-serif;
+  font-size: 0.88rem;
+  font-weight: 600;
+  font-style: italic;
+}
+
+/* Version label bottom-right */
+.slide-preview-version {
+  position: absolute;
+  bottom: 0.5rem;
+  right: 0.9rem;
+  color: rgba(180,180,180,0.7);
+  font-size: 0.65rem;
+  font-family: 'Arial', sans-serif;
+}
+
+
+body {
+  margin: 0;
+  font-family: 'Inter', system-ui, -apple-system, sans-serif;
+  background: linear-gradient(135deg, #020617 0%, #0f172a 50%, #171038 100%);
+  color: var(--text-main);
+  min-height: 100vh;
+  display: flex;
+  justify-content: center;
+  align-items: flex-start;
+  overflow: auto;
+}
+
+.bg-blob-1, .bg-blob-2 {
+  position: absolute;
+  border-radius: 50%;
+  filter: blur(120px);
+  z-index: -1;
+  opacity: 0.4;
+  animation: float 20s infinite alternate;
+}
+
+.bg-blob-1 {
+  width: 500px;
+  height: 500px;
+  background: #3b82f6;
+  top: -10%;
+  left: -10%;
+}
+
+.bg-blob-2 {
+  width: 600px;
+  height: 600px;
+  background: #8b5cf6;
+  bottom: -20%;
+  right: -10%;
+  animation-delay: -5s;
+}
+
+@keyframes float {
+  0% { transform: translate(0, 0) scale(1); }
+  100% { transform: translate(60px, 60px) scale(1.1); }
+}
+
+.app-container {
+  background: var(--panel-bg);
+  backdrop-filter: blur(24px);
+  -webkit-backdrop-filter: blur(24px);
+  border: 1px solid var(--border-color);
+  padding: 3rem;
+  border-radius: 32px;
+  box-shadow: 0 40px 80px -20px rgba(0, 0, 0, 0.6);
+  width: 95%;
+  max-width: 1000px; /* 您要求的居中容器寬度 */
+  margin: 40px auto;
+  min-height: 80vh;
+  display: flex;
+  flex-direction: column;
+  box-sizing: border-box;
+}
+
+.main-layout.three-columns {
+  display: grid;
+  grid-template-columns: 1fr 1fr; /* 兩側對稱填滿 */
+  gap: 2.5rem;
+  flex: 1;
+  align-items: stretch; /* 關鍵：強制子元素高度一致 */
+}
+
+.column {
+  background: rgba(15, 23, 42, 0.3);
+  padding: 3rem;
+  border-radius: 32px;
+  border: 1px solid var(--border-color);
+  display: flex;
+  flex-direction: column;
+  justify-content: center; /* 讓內容在垂直方向居中 */
+  height: auto;
+}
+
+.projection-start-card {
+  height: 100%;
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+}
+
+.btn-start-large {
+  width: 100%;
+  height: 300px;
+  border: 2px dashed var(--accent);
+  border-radius: 32px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 1.5rem;
+  color: white;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  background: rgba(59, 130, 246, 0.05);
+}
+
+.btn-start-large:hover {
+  background: rgba(59, 130, 246, 0.15);
+  transform: scale(1.02);
+  border-style: solid;
+}
+
+.btn-start-large svg {
+  width: 80px;
+  height: 80px;
+  color: var(--accent);
+}
+
+.btn-start-large span {
+  font-size: 1.5rem;
+  font-weight: 600;
+  letter-spacing: 0.1em;
+}
+
+.column {
+  background: rgba(15, 23, 42, 0.2);
+  padding: 1.5rem;
+  border-radius: 20px;
+  border: 1px solid var(--border-color);
+  display: flex;
+  flex-direction: column;
+}
+
+.column-middle {
+  flex: 1;
+}
+
+.preview-header {
+  font-size: 0.9rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: #60a5fa;
+  margin-bottom: 1.2rem;
+  text-align: center;
+  font-weight: 600;
+}
+
+.status-info {
+  font-size: 0.8rem;
+  color: #60a5fa;
+  text-align: center;
+  margin-top: 1rem;
+}
+
+.small-loader {
+  display: inline-block;
+  width: 12px;
+  height: 12px;
+  border: 2px solid rgba(59, 130, 246, 0.3);
+  border-top-color: #3b82f6;
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+  margin-left: 8px;
+}
+
+.app-container:hover {
+  transform: translateY(-5px);
+  box-shadow: 0 30px 60px -15px rgba(0, 0, 0, 0.6);
+}
+
+.header {
+  text-align: center;
+  margin-bottom: 2rem;
+}
+
+.header h1 {
+  font-size: 2.2rem;
+  margin: 0 0 0.5rem 0;
+  background: linear-gradient(to right, #60a5fa, #a78bfa);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+}
+
+.header p {
+  color: var(--text-muted);
+  margin: 0;
+  font-size: 1.05rem;
+}
+
+.form-group {
+  margin-bottom: 1.5rem;
+}
+
+.form-group label {
+  display: block;
+  margin-bottom: 0.6rem;
+  font-size: 0.95rem;
+  color: #cbd5e1;
+  font-weight: 500;
+}
+
+.form-control {
+  width: 100%;
+  padding: 1rem;
+  background: rgba(15, 23, 42, 0.6);
+  border: 1px solid var(--border-color);
+  border-radius: 12px;
+  color: white;
+  font-size: 1rem;
+  font-family: inherit;
+  transition: all 0.3s ease;
+  box-sizing: border-box;
+}
+
+.form-control:focus {
+  outline: none;
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.3);
+  background: rgba(15, 23, 42, 0.8);
+}
+
+.form-control option {
+  background: #1e293b;
+  color: white;
+}
+
+.btn-generate {
+  width: 100%;
+  padding: 1.1rem;
+  background: linear-gradient(135deg, var(--accent), #6366f1);
+  color: white;
+  border: none;
+  border-radius: 12px;
+  font-size: 1.1rem;
+  font-weight: 600;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  transition: all 0.3s ease;
+  margin-top: 1.5rem;
+}
+
+.btn-generate:hover:not(:disabled) {
+  transform: translateY(-2px);
+  box-shadow: 0 10px 20px -10px rgba(99, 102, 241, 0.8);
+}
+
+.btn-generate:active:not(:disabled) {
+  transform: translateY(1px);
+}
+
+.btn-generate:disabled {
+  opacity: 0.7;
+  cursor: not-allowed;
+  background: linear-gradient(135deg, #475569, #334155);
+}
+
+.loader {
+  border: 3px solid rgba(255, 255, 255, 0.3);
+  border-radius: 50%;
+  border-top: 3px solid white;
+  width: 20px;
+  height: 20px;
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+.error-msg {
+  color: #ef4444;
+  background: rgba(239, 68, 68, 0.1);
+  padding: 1rem;
+  border-radius: 12px;
+  border: 1px solid rgba(239, 68, 68, 0.2);
+  margin-bottom: 1.5rem;
+  font-size: 0.9rem;
+  animation: fadeIn 0.3s ease;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(-10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+/* --- 按鈕組與投影控制 --- */
+.btn-group-horizontal {
+  display: flex;
+  gap: 1rem;
+  margin-top: 1.5rem;
+}
+
+.btn-secondary {
+  flex: 0.8;
+  padding: 1.1rem;
+  background: rgba(45, 55, 72, 0.4);
+  color: white;
+  border: 1px solid var(--border-color);
+  border-radius: 12px;
+  font-size: 1rem;
+  font-weight: 500;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  transition: all 0.3s ease;
+}
+
+.btn-secondary:hover {
+  background: rgba(59, 130, 246, 0.2);
+  border-color: var(--accent);
+}
+
+.projection-control {
+  margin-top: 2rem;
+  background: rgba(30, 41, 59, 0.6);
+  border: 1px solid var(--accent);
+  border-radius: 16px;
+  padding: 1.2rem;
+  animation: slideUp 0.4s ease-out;
+}
+
+.control-current {
+  background: rgba(15, 23, 42, 0.8);
+  padding: 1.25rem;
+  border-radius: 12px;
+  margin-bottom: 2rem;
+  border-left: 4px solid var(--accent);
+}
+
+.title-tag {
+  color: #60a5fa;
+  font-size: 0.8rem;
+  font-weight: bold;
+  text-transform: uppercase;
+  margin-bottom: 0.5rem;
+}
+
+.text-snippet {
+  color: white;
+  font-size: 1.1rem;
+  line-height: 1.5;
+}
+
+.control-navigation {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.nav-btn {
+  background: var(--accent);
+  color: white;
+  border: none;
+  width: 64px;
+  height: 64px;
+  border-radius: 16px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  box-shadow: 0 4px 15px rgba(59, 130, 246, 0.3);
+  transition: all 0.2s;
+}
+
+.nav-btn:hover:not(:disabled) {
+  transform: scale(1.05) translateY(-2px);
+  background: #60a5fa;
+}
+
+.nav-btn:disabled {
+  background: #334155;
+  cursor: not-allowed;
+  box-shadow: none;
+  opacity: 0.5;
+}
+
+.progress-info {
+  text-align: center;
+}
+
+.chapter-label {
+  color: var(--text-muted);
+  font-size: 0.85rem;
+  margin-bottom: 4px;
+}
+
+.verse-index {
+  font-size: 1.5rem;
+  font-weight: bold;
+  font-family: 'Space Mono', monospace;
+  color: white;
+}
+
+.hotkey-tip {
+  text-align: center;
+  margin-top: 2rem;
+  font-size: 0.8rem;
+  color: var(--text-muted);
+  padding: 1rem;
+  border-top: 1px solid rgba(255,255,255,0.05);
+}
+
+.projection-start-card {
+  text-align: center;
+  padding: 3rem 1rem;
+}
+
+.projection-start-card p {
+  margin-bottom: 1.5rem;
+  color: var(--text-muted);
+}
+
+/* --- 投影專用頁面 (Projector Mode) --- */
+.projector-root {
+  position: fixed;
+  top: 0; left: 0; right: 0; bottom: 0;
+  background: #111; /* 深色背景 */
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: white;
+  z-index: 10000;
+  font-family: "PingFang TC", "Microsoft JhengHei", sans-serif;
+}
+
+.projector-waiting {
+  font-size: 2rem;
+  color: #475569;
+}
+
+.projector-container {
+  width: 100%;
+  height: 100%;
+  padding: 4vh 6vw;
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  background: #000; /* 純黑背景用於投影 */
+}
+
+.projector-title {
+  color: #FFFF00;
+  font-size: 6vh;
+  font-weight: bold;
+}
+
+.projector-body {
+  flex: 1;
+  display: flex;
+  align-items: flex-start;
+  margin-top: 5vh;
+}
+
+.projector-num {
+  font-size: 4vh;
+  color: #FFFF00;
+  font-weight: bold;
+  margin-right: 2vw;
+  margin-top: 1.8vh;
+  min-width: 4vw;
+  text-align: right;
+}
+
+.projector-text {
+  font-size: 7vh;
+  color: #FFFFFF;
+  line-height: 1.4;
+  word-break: break-all;
+}
+
+.projector-version {
+  color: #FFFF00;
+  font-size: 4vh;
+  font-weight: bold;
+  opacity: 0.9;
+}
+
+@keyframes slideUp {
+  from { transform: translateY(20px); opacity: 0; }
+  to { transform: translateY(0); opacity: 1; }
+}/* --- 響應式佈局 (Mobile Responsive) --- */
+@media (max-width: 768px) {
+  .app-container {
+    padding: 1.5rem;
+    margin: 10px auto;
+    width: 98%;
+    border-radius: 16px;
+  }
+
+  .header h1 {
+    font-size: 1.6rem;
+  }
+
+  .main-layout.three-columns {
+    grid-template-columns: 1fr; /* 切換為上下堆疊 */
+    gap: 1.5rem;
+  }
+
+  .btn-start-large {
+    height: 180px;
+  }
+
+  .btn-start-large span {
+    font-size: 1.2rem;
+  }
+}
