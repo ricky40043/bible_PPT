@@ -1,0 +1,373 @@
+.proj-page-wrapper {
+  position: relative;
+  min-height: calc(100vh - 56px);
+  display: flex;
+  justify-content: center;
+  align-items: flex-start;
+  overflow: auto;
+}
+
+/* Chapter Selector Row */
+.proj-selector-row {
+  display: flex;
+  gap: 1rem;
+  margin-bottom: 1.5rem;
+  align-items: flex-end;
+}
+
+.proj-select-group {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+
+.proj-select-group label {
+  font-size: 0.8rem;
+  color: #94a3b8;
+  font-weight: 500;
+}
+
+.proj-select-small {
+  flex: 0 0 90px;
+}
+
+/* Main Grid */
+.proj-main-grid {
+  display: grid;
+  grid-template-columns: 1fr 280px;
+  gap: 1.5rem;
+  align-items: start;
+}
+
+/* Verse Navigator */
+.proj-navigator {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  background: rgba(15, 23, 42, 0.4);
+  border-radius: 20px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  padding: 1.5rem;
+}
+
+.proj-current-verse {
+  min-height: 120px;
+  background: rgba(0, 0, 0, 0.3);
+  border-radius: 12px;
+  padding: 1.25rem;
+  border-left: 3px solid #3b82f6;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.proj-verse-title {
+  font-size: 0.85rem;
+  font-weight: 700;
+  color: #60a5fa;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.proj-verse-text {
+  font-size: 1.15rem;
+  color: #f8fafc;
+  line-height: 1.6;
+}
+
+.proj-verse-placeholder {
+  color: #475569;
+  font-size: 1rem;
+  text-align: center;
+  padding: 1rem 0;
+}
+
+/* Navigation Controls */
+.proj-nav-controls {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.proj-nav-btn {
+  background: #3b82f6;
+  color: white;
+  border: none;
+  width: 52px;
+  height: 52px;
+  border-radius: 14px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.2s;
+  flex-shrink: 0;
+}
+
+.proj-nav-btn:hover:not(:disabled) {
+  background: #60a5fa;
+  transform: scale(1.05);
+}
+
+.proj-nav-btn:disabled {
+  background: #1e293b;
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.proj-nav-info {
+  text-align: center;
+  flex: 1;
+}
+
+.proj-chapter-label {
+  color: #94a3b8;
+  font-size: 0.85rem;
+}
+
+.proj-verse-counter {
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: white;
+  font-family: 'Space Mono', monospace;
+}
+
+.proj-keyboard-hint {
+  text-align: center;
+  font-size: 0.75rem;
+  color: #334155;
+}
+
+/* Session Panel */
+.proj-session-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  background: rgba(15, 23, 42, 0.4);
+  border-radius: 20px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  padding: 1.5rem;
+  align-items: center;
+}
+
+.proj-open-btn {
+  width: 100%;
+  min-height: 140px;
+  border: 2px dashed #3b82f6;
+  border-radius: 16px;
+  background: rgba(59, 130, 246, 0.05);
+  color: white;
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.75rem;
+  transition: all 0.2s;
+}
+
+.proj-open-btn:hover {
+  background: rgba(59, 130, 246, 0.15);
+  border-style: solid;
+}
+
+.proj-open-btn svg {
+  color: #3b82f6;
+}
+
+.proj-open-btn span {
+  font-size: 1rem;
+  font-weight: 600;
+}
+
+.proj-session-info {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.4rem;
+  width: 100%;
+}
+
+.proj-session-badge {
+  background: #22c55e;
+  color: white;
+  font-size: 0.75rem;
+  font-weight: 700;
+  padding: 0.2rem 0.75rem;
+  border-radius: 20px;
+  letter-spacing: 0.08em;
+}
+
+.proj-room-id {
+  color: #94a3b8;
+  font-size: 0.8rem;
+  font-family: monospace;
+}
+
+/* Sync Button */
+.proj-sync-btn {
+  width: 100%;
+  padding: 0.6rem 1rem;
+  background: #f59e0b;
+  color: #000;
+  border: none;
+  border-radius: 10px;
+  font-size: 0.9rem;
+  font-weight: 700;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  transition: all 0.2s;
+  animation: pulse-yellow 1.5s infinite;
+}
+
+.proj-sync-btn:hover {
+  background: #fbbf24;
+  transform: scale(1.02);
+}
+
+@keyframes pulse-yellow {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(245, 158, 11, 0.4); }
+  50% { box-shadow: 0 0 0 6px rgba(245, 158, 11, 0); }
+}
+
+/* QR Section */
+.proj-qr-wrap {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.5rem;
+  margin-top: 0.5rem;
+}
+
+.proj-qr-box {
+  background: white;
+  padding: 8px;
+  border-radius: 10px;
+}
+
+.proj-qr-label {
+  font-size: 0.75rem;
+  color: #60a5fa;
+  font-weight: 600;
+  text-align: center;
+}
+
+/* ── PROJECTOR DISPLAY MODE ─────────────────────────── */
+.projector-root {
+  position: fixed;
+  top: 0; left: 0; right: 0; bottom: 0;
+  background: #000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: white;
+  z-index: 10000;
+  font-family: "PingFang TC", "Microsoft JhengHei", sans-serif;
+  /* Disable pull-to-refresh */
+  overscroll-behavior: contain;
+  touch-action: pan-y;
+}
+
+.projector-waiting {
+  font-size: 2rem;
+  color: #475569;
+}
+
+.projector-container {
+  width: 100%;
+  height: 100%;
+  padding: 4vh 6vw;
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  background: #000;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+
+.projector-title {
+  color: #FFFF00;
+  font-size: 5.5vh;
+  font-weight: bold;
+  flex-shrink: 0;
+}
+
+.projector-body {
+  flex: 1;
+  display: flex;
+  align-items: flex-start;
+  margin-top: 4vh;
+  gap: 2vw;
+}
+
+.projector-num {
+  font-size: 4vh;
+  color: #FFFF00;
+  font-weight: bold;
+  margin-top: 1.5vh;
+  min-width: 4vw;
+  text-align: right;
+  flex-shrink: 0;
+}
+
+.projector-text {
+  font-size: 7vh;
+  color: #FFFFFF;
+  line-height: 1.4;
+  word-break: break-all;
+}
+
+.projector-version {
+  color: #FFFF00;
+  font-size: 3.5vh;
+  font-weight: bold;
+  opacity: 0.9;
+  flex-shrink: 0;
+}
+
+/* Mobile: smaller text, scrollable */
+@media (max-width: 768px) {
+  .projector-title {
+    font-size: 4.5vw;
+  }
+  .projector-text {
+    font-size: 6vw;
+  }
+  .projector-num {
+    font-size: 4vw;
+  }
+  .projector-version {
+    font-size: 3.5vw;
+  }
+  .projector-container {
+    padding: 4vw;
+    overflow-y: auto;
+  }
+}
+
+/* Responsive Control Mode */
+@media (max-width: 900px) {
+  .proj-main-grid {
+    grid-template-columns: 1fr;
+  }
+  .proj-session-panel {
+    flex-direction: row;
+    flex-wrap: wrap;
+    justify-content: center;
+  }
+}
+
+@media (max-width: 600px) {
+  .proj-selector-row {
+    flex-wrap: wrap;
+  }
+  .proj-select-small {
+    flex: 1;
+  }
+}

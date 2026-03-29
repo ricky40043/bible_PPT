@@ -1,0 +1,70 @@
+.page-wrapper {
+  position: relative;
+  min-height: calc(100vh - 56px);
+  display: flex;
+  justify-content: center;
+  align-items: flex-start;
+  overflow: auto;
+}
+
+.ppt-layout {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 2rem;
+  flex: 1;
+  align-items: start;
+}
+
+.ppt-form-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+}
+
+.ppt-preview-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  padding: 2rem;
+  background: rgba(15, 23, 42, 0.3);
+  border-radius: 20px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.preview-label {
+  font-size: 0.8rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: #60a5fa;
+  font-weight: 600;
+  margin-bottom: 0.5rem;
+}
+
+.ppt-hint {
+  margin-top: 1rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+
+.ppt-hint p {
+  margin: 0;
+  font-size: 0.85rem;
+  color: #475569;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.ppt-hint p::before {
+  content: '✓';
+  color: #22c55e;
+  font-size: 0.75rem;
+}
+
+@media (max-width: 768px) {
+  .ppt-layout {
+    grid-template-columns: 1fr;
+    gap: 1.5rem;
+  }
+}
