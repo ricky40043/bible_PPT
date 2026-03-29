@@ -86,16 +86,19 @@
 }
 
 
+html {
+  overflow-x: hidden;
+  overscroll-behavior: none;
+}
+
 body {
   margin: 0;
   font-family: 'Inter', system-ui, -apple-system, sans-serif;
   background: linear-gradient(135deg, #020617 0%, #0f172a 50%, #171038 100%);
   color: var(--text-main);
   min-height: 100vh;
-  display: flex;
-  justify-content: center;
-  align-items: flex-start;
-  overflow: auto;
+  overflow-x: hidden;
+  overscroll-behavior: none;
 }
 
 .bg-blob-1, .bg-blob-2 {
@@ -297,10 +300,13 @@ body {
   border: 1px solid var(--border-color);
   border-radius: 12px;
   color: white;
+  -webkit-text-fill-color: white;
   font-size: 1rem;
   font-family: inherit;
   transition: all 0.3s ease;
   box-sizing: border-box;
+  -webkit-appearance: none;
+  appearance: none;
 }
 
 .form-control:focus {

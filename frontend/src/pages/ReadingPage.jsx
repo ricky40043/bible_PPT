@@ -11,6 +11,7 @@ export default function ReadingPage() {
   const [chapters, setChapters] = useState(50)
   const [formData, setFormData] = useState({ version: 'CUNP', book: 'GEN', chapter: '1' })
   const [chapterContent, setChapterContent] = useState([])
+  const [selectedVerse, setSelectedVerse] = useState('1')
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState(null)
   const contentRef = useRef(null)
@@ -37,9 +38,7 @@ export default function ReadingPage() {
         const data = await res.json()
         setChapters(data.count)
         setFormData(prev => ({ ...prev, chapter: '1' }))
-      } catch (err) {
-        console.error(err)
-      }
+      } catch (err) { console.error(err) }
     }
     getChapters()
   }, [formData.book])
@@ -49,11 +48,11 @@ export default function ReadingPage() {
       if (!formData.book || !formData.chapter || !formData.version) return
       setLoading(true)
       setChapterContent([])
+      setSelectedVerse('1')
       try {
         const res = await fetch(`${API}/api/verses_list/${formData.version}/${formData.book}/${formData.chapter}`)
         const data = await res.json()
         setChapterContent(data)
-        // Scroll to content after loading
         setTimeout(() => {
           contentRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })
         }, 100)
@@ -74,6 +73,13 @@ export default function ReadingPage() {
     }))
   }
 
+  const handleVerseJump = (e) => {
+    const num = e.target.value
+    setSelectedVerse(num)
+    const el = document.getElementById(`verse-${num}`)
+    if (el) el.scrollIntoView({ behavior: 'smooth', block: 'center' })
+  }
+
   const bookName = books.find(b => b.id === formData.book)?.name || formData.book
   const versionName = versions.find(v => v.id === formData.version)?.name || formData.version
 
@@ -89,7 +95,7 @@ export default function ReadingPage() {
 
         {error && <div className="error-msg">{error}</div>}
 
-        {/* Selector Bar */}
+        {/* Selector Bar: version / book / chapter / verse */}
         <div className="reading-selector-bar">
           <div className="reading-select-group">
             <label>版本</label>
@@ -108,6 +114,14 @@ export default function ReadingPage() {
             <select className="form-control" name="chapter" value={formData.chapter} onChange={handleChange}>
               {Array.from({ length: chapters }, (_, i) => i + 1).map(num => (
                 <option key={num} value={num}>{num}</option>
+              ))}
+            </select>
+          </div>
+          <div className="reading-select-group reading-select-small">
+            <label>節</label>
+            <select className="form-control" value={selectedVerse} onChange={handleVerseJump} disabled={chapterContent.length === 0}>
+              {chapterContent.map(v => (
+                <option key={v.num} value={v.num}>{v.num}</option>
               ))}
             </select>
           </div>
@@ -149,7 +163,7 @@ export default function ReadingPage() {
               </div>
               <div className="reading-verses">
                 {chapterContent.map((verse) => (
-                  <div key={verse.num} className="verse-item">
+                  <div key={verse.num} id={`verse-${verse.num}`} className="verse-item">
                     <span className="verse-num">{verse.num}</span>
                     <span className="verse-text">{verse.text}</span>
                   </div>

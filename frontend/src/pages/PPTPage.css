@@ -4,7 +4,8 @@
   display: flex;
   justify-content: center;
   align-items: flex-start;
-  overflow: auto;
+  overflow-x: hidden;
+  overflow-y: auto;
 }
 
 .ppt-layout {
