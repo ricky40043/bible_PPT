@@ -52,11 +52,54 @@ export default function ProjectionPage() {
     if (isProjectorMode && urlRoom) connectWS(urlRoom)
   }, [])
 
+  const currentVerseRef = useRef(null)
+  const currentIndexRef = useRef(0)
+  const chapterContentRef = useRef([])
+  const formDataRef = useRef(formData)
+  const booksRef = useRef([])
+  const versionsRef = useRef([])
+
+  // Keep refs in sync
+  useEffect(() => { currentVerseRef.current = currentVerse }, [currentVerse])
+  useEffect(() => { currentIndexRef.current = currentIndex }, [currentIndex])
+  useEffect(() => { chapterContentRef.current = chapterContent }, [chapterContent])
+  useEffect(() => { formDataRef.current = formData }, [formData])
+  useEffect(() => { booksRef.current = books }, [books])
+  useEffect(() => { versionsRef.current = versions }, [versions])
+
   const connectWS = (roomId) => {
     const socket = new WebSocket(`${WS_URL}/${roomId}`)
+    socket.onopen = () => {
+      // Projector display: request current state from controller
+      if (isProjectorMode) {
+        socket.send(JSON.stringify({ type: 'REQUEST_SYNC' }))
+      }
+    }
     socket.onmessage = (event) => {
       const data = JSON.parse(event.data)
-      if (data.type === 'SYNC') setCurrentVerse(data.payload)
+      if (data.type === 'SYNC') {
+        setCurrentVerse(data.payload)
+      } else if (data.type === 'REQUEST_SYNC' && !isProjectorMode) {
+        // A new viewer joined — re-send current verse
+        const content = chapterContentRef.current
+        const idx = currentIndexRef.current
+        const verse = content[idx]
+        if (verse && socket.readyState === WebSocket.OPEN) {
+          const fd = formDataRef.current
+          const bookName = booksRef.current.find(b => b.id === fd.book)?.name || fd.book
+          const versionName = versionsRef.current.find(v => v.id === fd.version)?.name || fd.version
+          const payload = {
+            type: 'SYNC',
+            payload: {
+              title: `${bookName} ${fd.chapter}:${verse.num}`,
+              num: verse.num,
+              text: verse.text,
+              version: versionName,
+            },
+          }
+          socket.send(JSON.stringify(payload))
+        }
+      }
     }
     socket.onclose = () => setTimeout(() => connectWS(roomId), 3000)
     socketRef.current = socket
