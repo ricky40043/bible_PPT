@@ -88,6 +88,7 @@
 
 html {
   overflow-x: hidden;
+  overscroll-behavior: none;
 }
 
 body {
@@ -98,6 +99,7 @@ body {
   color: var(--text-main);
   min-height: 100vh;
   overflow-x: hidden;
+  overscroll-behavior: none;
 }
 
 .bg-blob-1, .bg-blob-2 {
