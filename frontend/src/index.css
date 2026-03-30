@@ -87,7 +87,8 @@
 
 
 html {
-  overflow-x: hidden;
+  height: 100%;
+  overflow: hidden;
   overscroll-behavior: none;
 }
 
@@ -97,9 +98,27 @@ body {
   background: linear-gradient(135deg, #020617 0%, #0f172a 50%, #171038 100%);
   background-attachment: fixed;
   color: var(--text-main);
-  min-height: 100vh;
-  overflow-x: hidden;
+  height: 100%;
+  overflow: hidden;
   overscroll-behavior: none;
+}
+
+#root {
+  height: 100%;
+}
+
+.app-layout {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.app-main {
+  flex: 1;
+  overflow-y: auto;
+  overflow-x: hidden;
+  -webkit-overflow-scrolling: touch;
 }
 
 .bg-blob-1, .bg-blob-2 {
@@ -142,9 +161,8 @@ body {
   border-radius: 32px;
   box-shadow: 0 40px 80px -20px rgba(0, 0, 0, 0.6);
   width: 95%;
-  max-width: 1000px; /* 您要求的居中容器寬度 */
+  max-width: 1000px;
   margin: 40px auto;
-  min-height: 80vh;
   display: flex;
   flex-direction: column;
   box-sizing: border-box;

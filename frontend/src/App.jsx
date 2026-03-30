@@ -7,15 +7,24 @@ import ReadingPage from './pages/ReadingPage'
 function AppContent() {
   const location = useLocation()
   const isProjectorMode = new URLSearchParams(location.search).get('mode') === 'projector'
-  return (
-    <>
-      {!isProjectorMode && <NavBar />}
+  if (isProjectorMode) {
+    return (
       <Routes>
-        <Route path="/" element={<PPTPage />} />
         <Route path="/projection" element={<ProjectionPage />} />
-        <Route path="/reading" element={<ReadingPage />} />
       </Routes>
-    </>
+    )
+  }
+  return (
+    <div className="app-layout">
+      <NavBar />
+      <main className="app-main">
+        <Routes>
+          <Route path="/" element={<PPTPage />} />
+          <Route path="/projection" element={<ProjectionPage />} />
+          <Route path="/reading" element={<ReadingPage />} />
+        </Routes>
+      </main>
+    </div>
   )
 }
 

@@ -15,6 +15,8 @@ export default function ReadingPage() {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState(null)
   const contentRef = useRef(null)
+  const touchStartX = useRef(null)
+  const touchStartY = useRef(null)
 
   useEffect(() => {
     const fetchOptions = async () => {
@@ -78,6 +80,26 @@ export default function ReadingPage() {
     setSelectedVerse(num)
     const el = document.getElementById(`verse-${num}`)
     if (el) el.scrollIntoView({ behavior: 'smooth', block: 'center' })
+  }
+
+  const handleTouchStart = (e) => {
+    touchStartX.current = e.touches[0].clientX
+    touchStartY.current = e.touches[0].clientY
+  }
+
+  const handleTouchEnd = (e) => {
+    if (touchStartX.current === null) return
+    const dx = e.changedTouches[0].clientX - touchStartX.current
+    const dy = e.changedTouches[0].clientY - touchStartY.current
+    touchStartX.current = null
+    touchStartY.current = null
+    // Only trigger for clearly horizontal swipes > 50px
+    if (Math.abs(dx) < 50 || Math.abs(dx) < Math.abs(dy)) return
+    if (dx < 0 && parseInt(formData.chapter) < chapters) {
+      setFormData(prev => ({ ...prev, chapter: (parseInt(prev.chapter) + 1).toString() }))
+    } else if (dx > 0 && parseInt(formData.chapter) > 1) {
+      setFormData(prev => ({ ...prev, chapter: (parseInt(prev.chapter) - 1).toString() }))
+    }
   }
 
   const bookName = books.find(b => b.id === formData.book)?.name || formData.book
@@ -149,7 +171,12 @@ export default function ReadingPage() {
         </div>
 
         {/* Content */}
-        <div className="reading-content" ref={contentRef}>
+        <div
+          className="reading-content"
+          ref={contentRef}
+          onTouchStart={handleTouchStart}
+          onTouchEnd={handleTouchEnd}
+        >
           {loading ? (
             <div className="reading-loading">
               <span className="loader" />
@@ -173,6 +200,27 @@ export default function ReadingPage() {
           ) : (
             <div className="reading-empty">選擇書卷和章節開始閱讀</div>
           )}
+        </div>
+
+        {/* Bottom Chapter Navigation */}
+        <div className="reading-chapter-nav reading-chapter-nav-bottom">
+          <button
+            className="reading-nav-btn"
+            disabled={parseInt(formData.chapter) <= 1}
+            onClick={() => setFormData(prev => ({ ...prev, chapter: (parseInt(prev.chapter) - 1).toString() }))}
+          >
+            ← 上一章
+          </button>
+          <span className="reading-chapter-title">
+            {bookName} 第 {formData.chapter} 章
+          </span>
+          <button
+            className="reading-nav-btn"
+            disabled={parseInt(formData.chapter) >= chapters}
+            onClick={() => setFormData(prev => ({ ...prev, chapter: (parseInt(prev.chapter) + 1).toString() }))}
+          >
+            下一章 →
+          </button>
         </div>
       </div>
     </div>

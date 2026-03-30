@@ -25,20 +25,29 @@ class ConnectionManager:
     def __init__(self):
         # { room_id: [websocket1, websocket2, ...] }
         self.active_connections: dict[str, list[WebSocket]] = {}
+        # { room_id: last_sync_payload } — so new clients see the current slide immediately
+        self.room_state: dict[str, dict] = {}
 
     async def connect(self, websocket: WebSocket, room_id: str):
         await websocket.accept()
         if room_id not in self.active_connections:
             self.active_connections[room_id] = []
         self.active_connections[room_id].append(websocket)
+        # Send the current slide to the new client immediately (if any state exists)
+        if room_id in self.room_state:
+            await websocket.send_json(self.room_state[room_id])
 
     def disconnect(self, websocket: WebSocket, room_id: str):
         if room_id in self.active_connections:
             self.active_connections[room_id].remove(websocket)
             if not self.active_connections[room_id]:
                 del self.active_connections[room_id]
+                self.room_state.pop(room_id, None)
 
     async def broadcast(self, message: dict, room_id: str):
+        # Cache the latest SYNC so new clients can receive it on connect
+        if message.get('type') == 'SYNC':
+            self.room_state[room_id] = message
         if room_id in self.active_connections:
             for connection in self.active_connections[room_id]:
                 await connection.send_json(message)
