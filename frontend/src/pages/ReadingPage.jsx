@@ -107,8 +107,6 @@ export default function ReadingPage() {
 
   return (
     <div className="reading-page-wrapper">
-      <div className="bg-blob-1" />
-      <div className="bg-blob-2" />
       <div className="app-container">
         <div className="header">
           <h1><BookOpen size={26} />線上閱讀</h1>

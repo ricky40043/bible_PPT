@@ -115,8 +115,6 @@ export default function PPTPage() {
 
   return (
     <div className="page-wrapper">
-      <div className="bg-blob-1" />
-      <div className="bg-blob-2" />
       <div className="app-container">
         <div className="header">
           <h1><BookIcon size={28} />聖經 PPT 產生器</h1>

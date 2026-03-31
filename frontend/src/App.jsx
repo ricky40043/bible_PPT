@@ -16,6 +16,8 @@ function AppContent() {
   }
   return (
     <div className="app-layout">
+      <div className="bg-blob-1" />
+      <div className="bg-blob-2" />
       <NavBar />
       <main className="app-main">
         <Routes>
