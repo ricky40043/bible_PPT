@@ -124,7 +124,7 @@ body {
   flex: 1;
   overflow-y: auto;
   overflow-x: hidden;
-  overscroll-behavior-y: none;
+  -webkit-overflow-scrolling: touch;
 }
 
 .bg-blob-1, .bg-blob-2 {
