@@ -103,6 +103,12 @@ body {
   overscroll-behavior: none;
 }
 
+@media (max-width: 768px) {
+  body {
+    background-attachment: scroll;
+  }
+}
+
 #root {
   height: 100%;
 }
@@ -118,15 +124,16 @@ body {
   flex: 1;
   overflow-y: auto;
   overflow-x: hidden;
-  -webkit-overflow-scrolling: touch;
+  overscroll-behavior-y: none;
 }
 
 .bg-blob-1, .bg-blob-2 {
-  position: absolute;
+  position: fixed;
   border-radius: 50%;
   filter: blur(120px);
   z-index: -1;
   opacity: 0.4;
+  pointer-events: none;
   animation: float 20s infinite alternate;
 }
 
@@ -272,9 +279,11 @@ body {
   margin-left: 8px;
 }
 
-.app-container:hover {
-  transform: translateY(-5px);
-  box-shadow: 0 30px 60px -15px rgba(0, 0, 0, 0.6);
+@media (hover: hover) {
+  .app-container:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 30px 60px -15px rgba(0, 0, 0, 0.6);
+  }
 }
 
 .header {
