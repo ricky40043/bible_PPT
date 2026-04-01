@@ -299,7 +299,7 @@ export default function ProjectionPage() {
           </div>
           <div className="proj-select-group proj-select-small">
             <label>節</label>
-            <select className="form-control" value={currentVerseNum} onChange={handleVerseJump} disabled={chapterContent.length === 0 || !projectorOpen}>
+            <select className="form-control" value={currentVerseNum} onChange={handleVerseJump} disabled={chapterContent.length === 0}>
               {chapterContent.map(v => (
                 <option key={v.num} value={v.num}>{v.num}</option>
               ))}
@@ -325,7 +325,7 @@ export default function ProjectionPage() {
             </div>
 
             <div className="proj-nav-controls">
-              <button className="proj-nav-btn" onClick={handlePrev} disabled={!projectorOpen || currentIndex === 0}>
+              <button className="proj-nav-btn" onClick={handlePrev} disabled={currentIndex === 0 && parseInt(formData.chapter) <= 1}>
                 <ChevronLeft size={28} />
               </button>
               <div className="proj-nav-info">
@@ -336,7 +336,7 @@ export default function ProjectionPage() {
                   <div className="proj-verse-counter">{displayInfo.position} / {displayInfo.totalVerses}</div>
                 )}
               </div>
-              <button className="proj-nav-btn" onClick={handleNext} disabled={!projectorOpen}>
+              <button className="proj-nav-btn" onClick={handleNext}>
                 <ChevronRight size={28} />
               </button>
             </div>
