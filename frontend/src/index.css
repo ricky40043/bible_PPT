@@ -87,9 +87,8 @@
 
 
 html {
-  height: 100%;
-  overflow: hidden;
-  overscroll-behavior: none;
+  overflow-x: hidden;
+  background: #020617;
 }
 
 body {
@@ -98,9 +97,8 @@ body {
   background: linear-gradient(135deg, #020617 0%, #0f172a 50%, #171038 100%);
   background-attachment: fixed;
   color: var(--text-main);
-  height: 100%;
-  overflow: hidden;
-  overscroll-behavior: none;
+  min-height: 100vh;
+  overflow-x: hidden;
 }
 
 @media (max-width: 768px) {
@@ -109,23 +107,15 @@ body {
   }
 }
 
-#root {
-  height: 100%;
-}
-
 .app-layout {
-  height: 100%;
   display: flex;
   flex-direction: column;
-  overflow: hidden;
+  min-height: 100vh;
 }
 
 .app-main {
   flex: 1;
-  overflow-y: auto;
   overflow-x: hidden;
-  -webkit-overflow-scrolling: touch;
-  overscroll-behavior: contain;
 }
 
 .bg-blob-1, .bg-blob-2 {
