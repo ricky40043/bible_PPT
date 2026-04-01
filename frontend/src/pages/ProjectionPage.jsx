@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react'
-import { ChevronLeft, ChevronRight, Monitor, RefreshCw } from 'lucide-react'
+import { ChevronLeft, ChevronRight, Monitor } from 'lucide-react'
 import { QRCodeSVG } from 'qrcode.react'
 import './ProjectionPage.css'
 
@@ -23,12 +23,11 @@ export default function ProjectionPage() {
   const [currentVerse, setCurrentVerse] = useState(null)
   const [room, setRoom] = useState(urlRoom || null)
   const [projectorOpen, setProjectorOpen] = useState(!!urlRoom)
-  const [chapterChanged, setChapterChanged] = useState(false)
+  const [displayInfo, setDisplayInfo] = useState(null) // only updates when verse is synced
   const [error, setError] = useState(null)
   const [loadingContent, setLoadingContent] = useState(false)
 
   const socketRef = useRef(null)
-  const prevSelectionRef = useRef({ book: 'GEN', chapter: '1', version: 'CUNP' })
   const navTriggeredRef = useRef(false)   // true = chapter change came from navigation
   const pendingNextRef = useRef(false)    // true = jump to first verse after load
 
@@ -80,24 +79,10 @@ export default function ProjectionPage() {
       if (data.type === 'SYNC') {
         setCurrentVerse(data.payload)
       } else if (data.type === 'REQUEST_SYNC' && !isProjectorMode) {
-        // A new viewer joined — re-send current verse
-        const content = chapterContentRef.current
-        const idx = currentIndexRef.current
-        const verse = content[idx]
-        if (verse && socket.readyState === WebSocket.OPEN) {
-          const fd = formDataRef.current
-          const bookName = booksRef.current.find(b => b.id === fd.book)?.name || fd.book
-          const versionName = versionsRef.current.find(v => v.id === fd.version)?.name || fd.version
-          const payload = {
-            type: 'SYNC',
-            payload: {
-              title: `${bookName} ${fd.chapter}:${verse.num}`,
-              num: verse.num,
-              text: verse.text,
-              version: versionName,
-            },
-          }
-          socket.send(JSON.stringify(payload))
+        // A new viewer joined — re-send current verse as-is
+        const cv = currentVerseRef.current
+        if (cv && socket.readyState === WebSocket.OPEN) {
+          socket.send(JSON.stringify({ type: 'SYNC', payload: cv }))
         }
       }
     }
@@ -134,16 +119,8 @@ export default function ProjectionPage() {
           sendSyncData(data[0], 0, data)
           pendingNextRef.current = false
           navTriggeredRef.current = false
-          prevSelectionRef.current = { book: formData.book, chapter: formData.chapter, version: formData.version }
         } else {
-          // User-initiated change — check if we should show sync button
-          const prev = prevSelectionRef.current
-          if (projectorOpen && !navTriggeredRef.current &&
-            (prev.book !== formData.book || prev.chapter !== formData.chapter || prev.version !== formData.version)) {
-            setChapterChanged(true)
-          }
           navTriggeredRef.current = false
-          prevSelectionRef.current = { book: formData.book, chapter: formData.chapter, version: formData.version }
         }
       } catch (err) { console.error(err) }
       setLoadingContent(false)
@@ -156,6 +133,7 @@ export default function ProjectionPage() {
     const fd = fData || formData
     const bl = booksData || books
     const vl = versionsData || versions
+    const ct = content || chapterContent
     const bookName = bl.find(b => b.id === fd.book)?.name || fd.book
     const versionName = vl.find(v => v.id === fd.version)?.name || fd.version
     const payload = {
@@ -172,6 +150,12 @@ export default function ProjectionPage() {
     }
     setCurrentVerse(payload.payload)
     setCurrentIndex(index)
+    // Update display info only when verse is actually synced
+    setDisplayInfo({
+      label: `${bookName} 第 ${fd.chapter} 章`,
+      totalVerses: ct.length,
+      position: index + 1,
+    })
   }
 
   const sendSync = (verse, index) => sendSyncData(verse, index, chapterContent)
@@ -229,21 +213,11 @@ export default function ProjectionPage() {
     const sessionId = Math.random().toString(36).substring(2, 8).toUpperCase()
     setRoom(sessionId)
     setProjectorOpen(true)
-    setChapterChanged(false)
-    prevSelectionRef.current = { book: formData.book, chapter: formData.chapter, version: formData.version }
     window.open(`${window.location.origin}/projection?mode=projector&room=${sessionId}`, '_blank', 'width=1280,height=720')
     connectWS(sessionId)
     setTimeout(() => {
       if (chapterContent.length > 0) sendSync(chapterContent[currentIndex] || chapterContent[0], currentIndex || 0)
     }, 1000)
-  }
-
-  const handleSyncChapter = () => {
-    if (chapterContent.length > 0) {
-      sendSync(chapterContent[0], 0)
-      setChapterChanged(false)
-      prevSelectionRef.current = { book: formData.book, chapter: formData.chapter, version: formData.version }
-    }
   }
 
   // ── Keyboard controls ───────────────────────────────────────────
@@ -354,9 +328,11 @@ export default function ProjectionPage() {
                 <ChevronLeft size={28} />
               </button>
               <div className="proj-nav-info">
-                <div className="proj-chapter-label">{bookName} 第 {formData.chapter} 章</div>
-                {chapterContent.length > 0 && (
-                  <div className="proj-verse-counter">{currentIndex + 1} / {chapterContent.length}</div>
+                <div className="proj-chapter-label">
+                  {displayInfo ? displayInfo.label : `${bookName} 第 ${formData.chapter} 章`}
+                </div>
+                {displayInfo && (
+                  <div className="proj-verse-counter">{displayInfo.position} / {displayInfo.totalVerses}</div>
                 )}
               </div>
               <button className="proj-nav-btn" onClick={handleNext} disabled={!projectorOpen}>
@@ -380,13 +356,6 @@ export default function ProjectionPage() {
                   <div className="proj-session-badge">直播中</div>
                   <div className="proj-room-id">房間: {room}</div>
                 </div>
-
-                {chapterChanged && (
-                  <button className="proj-sync-btn" onClick={handleSyncChapter}>
-                    <RefreshCw size={16} />
-                    同步到投影
-                  </button>
-                )}
 
                 <div className="proj-qr-wrap">
                   <div className="proj-qr-box">
