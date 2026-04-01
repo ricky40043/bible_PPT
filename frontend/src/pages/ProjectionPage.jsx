@@ -113,6 +113,7 @@ export default function ProjectionPage() {
         const res = await fetch(`${API}/api/verses_list/${formData.version}/${formData.book}/${formData.chapter}`)
         const data = await res.json()
         setChapterContent(data)
+        setCurrentIndex(0) // reset position whenever new chapter loads
 
         if (pendingNextRef.current && data.length > 0) {
           // Auto-advance from navigation — sync first verse immediately
@@ -298,7 +299,7 @@ export default function ProjectionPage() {
           </div>
           <div className="proj-select-group proj-select-small">
             <label>節</label>
-            <select className="form-control" value={currentVerseNum} onChange={handleVerseJump} disabled={chapterContent.length === 0}>
+            <select className="form-control" value={currentVerseNum} onChange={handleVerseJump} disabled={chapterContent.length === 0 || !projectorOpen}>
               {chapterContent.map(v => (
                 <option key={v.num} value={v.num}>{v.num}</option>
               ))}
