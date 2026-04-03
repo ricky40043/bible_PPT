@@ -1,4 +1,4 @@
-name: Build and Deploy to Cloud Run
+name: Deploy to Render
 
 on:
   push:
@@ -9,18 +9,6 @@ jobs:
   deploy:
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-
-      - name: Authenticate to Google Cloud
-        # 使用您在 GitHub Secret 設定的 GCP_SA_KEY
-        uses: google-github-actions/auth@v2
-        with:
-          credentials_json: ${{ secrets.GCP_SA_KEY }}
-
-      - name: Set up Cloud SDK
-        uses: google-github-actions/setup-gcloud@v2
-
-      - name: Submit Build to Cloud Build
+      - name: Trigger Render Deploy
         run: |
-          gcloud builds submit --config cloudbuild.yaml .
+          curl -X POST "https://api.render.com/deploy/${{ secrets.RENDER_SERVICE_ID }}?key=${{ secrets.RENDER_API_KEY }}"
