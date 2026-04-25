@@ -1,6 +1,6 @@
 """
 ppt_generator.py
-使用 20260322.pptx 作為版面模板，精確重現格式：
+使用 經文範本.pptx 作為版面模板，精確重現格式：
   - 框0 (subTitle): 節號，54pt，FFFF00，置中，x=0.209" y=1.230" w=1.194" h=2.090"
   - 框1 (ctrTitle): 標題，54pt，FFFF00，左對齊，anchor=bottom，x=0.209" y=-0.002" w=12.679" h=1.026"
   - 框2 (body/2):   經文，54pt，白色，左對齊，x=1.312" y=1.024" w=11.576" h=6.470"
@@ -20,7 +20,7 @@ import os
 
 # 模板路徑（與此檔案同層的上一層目錄）
 _HERE = os.path.dirname(os.path.abspath(__file__))
-TEMPLATE_PATH = os.path.join(_HERE, "..", "20260322.pptx")
+TEMPLATE_PATH = os.path.join(_HERE, "..", "經文範本.pptx")
 
 # 顏色
 COLOR_YELLOW = RGBColor(0xFF, 0xFF, 0x00)
@@ -42,9 +42,9 @@ SZ_MEDIUM = 4000   # 40pt — 版本
 
 
 def _set_textbox(slide, box_key: str, text: str,
-                 font_name: str, sz: int,
-                 color: RGBColor, bold: bool,
-                 align: PP_ALIGN, anchor: str = "t"):
+                  sz: int,
+                  color: RGBColor, bold: bool,
+                  align: PP_ALIGN, anchor: str = "t"):
     """在 slide 上加一個文字框，完全以精確 EMU 定位。"""
     b = _BOX[box_key]
     txBox = slide.shapes.add_textbox(
@@ -123,7 +123,6 @@ def _set_textbox(slide, box_key: str, text: str,
     run = para.add_run()
     run.text = text
     f = run.font
-    f.name = font_name
     f.size = Pt(sz / 100)
     f.bold = bold
     f.color.rgb = color
@@ -138,9 +137,9 @@ def _set_textbox(slide, box_key: str, text: str,
 
 
 def generate_bible_ppt(version: str, book_zh: str, chapter: int, verses: list,
-                       verse_start: int = None, verse_end: int = None) -> io.BytesIO:
+                        verse_start: int = None, verse_end: int = None, include_version: bool = True) -> io.BytesIO:
     """
-    依照 20260322.pptx 格式產生聖經 PPT：
+    依照 經文範本.pptx 格式產生聖經 PPT：
     - 黑底（Slide Master）
     - 標題：黃色 54pt，左對齊底部錨點
     - 節號：黃色 54pt，置中
@@ -209,23 +208,21 @@ def generate_bible_ppt(version: str, book_zh: str, chapter: int, verses: list,
         _set_textbox(
             slide, "title",
             text=title_text,
-            font_name="Arial",
             sz=SZ_LARGE,
             color=COLOR_YELLOW,
-            bold=False,
+            bold=True,
             align=PP_ALIGN.LEFT,
             anchor="b",
         )
 
-        # 框0：節號（黃、36pt、靠右、anchor=top）
+        # 框0：節號（黃、36pt、置中、anchor=top）
         _set_textbox(
             slide, "verse_num",
             text=str(verse['num']),
-            font_name="Arial",
             sz=SZ_VERSE,
             color=COLOR_YELLOW,
             bold=True,
-            align=PP_ALIGN.RIGHT,
+            align=PP_ALIGN.CENTER,
             anchor="t",
         )
 
@@ -233,25 +230,24 @@ def generate_bible_ppt(version: str, book_zh: str, chapter: int, verses: list,
         _set_textbox(
             slide, "body",
             text=verse['text'],
-            font_name="Arial",
             sz=SZ_LARGE,
             color=COLOR_WHITE,
-            bold=False,
+            bold=True,
             align=PP_ALIGN.LEFT,
             anchor="t",
         )
 
         # 框3：版本（黃、40pt、左對齊、anchor=top）
-        _set_textbox(
-            slide, "version",
-            text=f"({version})",
-            font_name="Arial",
-            sz=SZ_MEDIUM,
-            color=COLOR_YELLOW,
-            bold=True,
-            align=PP_ALIGN.LEFT,
-            anchor="t",
-        )
+        if include_version:
+            _set_textbox(
+                slide, "version",
+                text=f"({version})",
+                sz=SZ_MEDIUM,
+                color=COLOR_YELLOW,
+                bold=True,
+                align=PP_ALIGN.LEFT,
+                anchor="t",
+            )
 
     ppt_stream = io.BytesIO()
     prs.save(ppt_stream)

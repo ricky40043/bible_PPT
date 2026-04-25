@@ -53,6 +53,21 @@
   gap: 0.5rem;
 }
 
+.checkbox-label {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.9rem;
+  color: #e2e8f0;
+  cursor: pointer;
+}
+
+.checkbox-label input[type="checkbox"] {
+  width: 16px;
+  height: 16px;
+  accent-color: #fbbf24;
+}
+
 .ppt-hint p::before {
   content: '✓';
   color: #22c55e;

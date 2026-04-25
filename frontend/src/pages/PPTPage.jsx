@@ -16,6 +16,7 @@ export default function PPTPage() {
     chapter: '1',
     verse_start: '1',
     verse_end: '10',
+    includeVersion: false,
   })
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState(null)
@@ -58,7 +59,7 @@ export default function PPTPage() {
         const res = await fetch(`${API}/api/verses_list/${formData.version}/${formData.book}/${formData.chapter}`)
         const data = await res.json()
         setVerseCount(data.length)
-        setFormData(prev => ({ ...prev, verse_start: '1', verse_end: data.length.toString() }))
+        setFormData(prev => ({ ...prev, verse_start: '1', verse_end: data.length.toString(), includeVersion: formData.version !== 'CUNP' }))
       } catch (err) {
         console.error(err)
       }
@@ -88,6 +89,7 @@ export default function PPTPage() {
         chapter: parseInt(formData.chapter),
         verse_start: parseInt(formData.verse_start),
         verse_end: parseInt(formData.verse_end),
+        include_version: formData.includeVersion,
       }
       const res = await fetch(`${API}/api/generate`, {
         method: 'POST',
@@ -130,6 +132,17 @@ export default function PPTPage() {
               <select className="form-control" name="version" value={formData.version} onChange={handleChange}>
                 {versions.map(v => <option key={v.id} value={v.id}>{v.name}</option>)}
               </select>
+            </div>
+            <div className="form-group">
+              <label className="checkbox-label">
+                <input
+                  type="checkbox"
+                  name="includeVersion"
+                  checked={formData.includeVersion}
+                  onChange={(e) => setFormData(prev => ({ ...prev, includeVersion: e.target.checked }))}
+                />
+                顯示版本
+              </label>
             </div>
             <div className="form-group">
               <label>書卷 / Book</label>
@@ -177,7 +190,7 @@ export default function PPTPage() {
                 <span className="slide-preview-num">1</span>
                 <span className="slide-preview-text">（選好範圍後下載 PPTX）</span>
               </div>
-              <div className="slide-preview-version">(新標點和合本)</div>
+              {formData.includeVersion && <div className="slide-preview-version">({versions.find(v => v.id === formData.version)?.name || '新標點和合本'})</div>}
             </div>
             <div className="ppt-hint">
               <p>每節經文一張投影片</p>

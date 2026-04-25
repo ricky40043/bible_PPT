@@ -60,6 +60,7 @@ class GenerateRequest(BaseModel):
     chapter: int
     verse_start: Optional[int] = None
     verse_end: Optional[int] = None
+    include_version: bool = True
 
 @app.get("/api/versions")
 def get_versions():
@@ -121,7 +122,8 @@ def generate_ppt(req: GenerateRequest):
         ppt_stream = generate_bible_ppt(
             full_version_id_name, book_zh, req.chapter, verses,
             verse_start=req.verse_start,
-            verse_end=req.verse_end
+            verse_end=req.verse_end,
+            include_version=req.include_version
         )
 
         # 建立簡潔的輸出檔名，與標題一致

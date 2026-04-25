@@ -5,7 +5,7 @@ import './NavBar.css'
 export default function NavBar() {
   return (
     <nav className="navbar">
-      <div className="navbar-brand">聖經工具</div>
+      <div className="navbar-brand">聖經 PPT 產生器</div>
       <div className="navbar-links">
         <NavLink to="/" end className={({ isActive }) => isActive ? 'navbar-link active' : 'navbar-link'}>
           <FileText size={18} /><span>PPT製作</span>
