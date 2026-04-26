@@ -214,7 +214,13 @@ export default function ProjectionPage() {
     const sessionId = Math.random().toString(36).substring(2, 8).toUpperCase()
     setRoom(sessionId)
     setProjectorOpen(true)
-    window.open(`${window.location.origin}/projection?mode=projector&room=${sessionId}`, '_blank', 'width=1280,height=720')
+
+    // 手機版面不自動彈跳視窗
+    const isMobile = window.innerWidth <= 768
+    if (!isMobile) {
+      window.open(`${window.location.origin}/projection?mode=projector&room=${sessionId}`, '_blank', 'width=1280,height=720')
+    }
+
     connectWS(sessionId)
     setTimeout(() => {
       if (chapterContent.length > 0) sendSync(chapterContent[currentIndex] || chapterContent[0], currentIndex || 0)
@@ -368,6 +374,29 @@ export default function ProjectionPage() {
                     />
                   </div>
                   <div className="proj-qr-label">掃描加入同步觀看</div>
+                  <div className="proj-qr-link">
+                    <button
+                      className="proj-link-btn"
+                      onClick={() => {
+                        const url = `${window.location.origin}/projection?mode=projector&room=${room}`
+                        navigator.clipboard.writeText(url).then(() => {
+                          // 可以加入複製成功的提示
+                          alert('連結已複製到剪貼簿')
+                        }).catch(() => {
+                          // 複製失敗時的備用方案
+                          const textArea = document.createElement('textarea')
+                          textArea.value = url
+                          document.body.appendChild(textArea)
+                          textArea.select()
+                          document.execCommand('copy')
+                          document.body.removeChild(textArea)
+                          alert('連結已複製到剪貼簿')
+                        })
+                      }}
+                    >
+                      {`${window.location.origin}/projection?mode=projector&room=${room}`}
+                    </button>
+                  </div>
                 </div>
               </>
             )}

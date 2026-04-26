@@ -254,6 +254,34 @@
   text-align: center;
 }
 
+.proj-qr-link {
+  margin-top: 0.5rem;
+  text-align: center;
+}
+
+.proj-link-btn {
+  background: none;
+  border: none;
+  color: #94a3b8;
+  font-size: 0.7rem;
+  font-family: monospace;
+  text-decoration: underline;
+  cursor: pointer;
+  padding: 0.25rem 0.5rem;
+  border-radius: 4px;
+  transition: all 0.2s;
+  word-break: break-all;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.proj-link-btn:hover {
+  color: #60a5fa;
+  background: rgba(96, 165, 250, 0.1);
+}
+
 /* ── PROJECTOR DISPLAY MODE ─────────────────────────── */
 .projector-root {
   position: fixed;
@@ -357,6 +385,10 @@
     flex-direction: row;
     flex-wrap: wrap;
     justify-content: center;
+  }
+  .proj-link-btn {
+    font-size: 0.65rem;
+    padding: 0.2rem 0.3rem;
   }
 }
 
