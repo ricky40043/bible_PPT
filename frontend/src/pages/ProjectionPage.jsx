@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react'
-import { ChevronLeft, ChevronRight, Monitor } from 'lucide-react'
+import { ChevronLeft, ChevronRight, Monitor, Copy, Check } from 'lucide-react'
 import { QRCodeSVG } from 'qrcode.react'
 import './ProjectionPage.css'
 
@@ -24,6 +24,7 @@ export default function ProjectionPage() {
   const [room, setRoom] = useState(urlRoom || null)
   const [projectorOpen, setProjectorOpen] = useState(!!urlRoom)
   const [displayInfo, setDisplayInfo] = useState(null) // only updates when verse is synced
+  const [copied, setCopied] = useState(false)
   const [error, setError] = useState(null)
   const [loadingContent, setLoadingContent] = useState(false)
 
@@ -210,15 +211,31 @@ export default function ProjectionPage() {
     setFormData(prev => ({ ...prev, [name]: value, ...(name === 'book' ? { chapter: '1' } : {}) }))
   }
 
+  const copyUrl = (url) => {
+    navigator.clipboard.writeText(url).catch(() => {
+      const textArea = document.createElement('textarea')
+      textArea.value = url
+      document.body.appendChild(textArea)
+      textArea.select()
+      document.execCommand('copy')
+      document.body.removeChild(textArea)
+    })
+    setCopied(true)
+    setTimeout(() => setCopied(false), 2000)
+  }
+
   const handleOpenProjector = () => {
     const sessionId = Math.random().toString(36).substring(2, 8).toUpperCase()
+    const url = `${window.location.origin}/projection?mode=projector&room=${sessionId}`
     setRoom(sessionId)
     setProjectorOpen(true)
 
-    // 手機版面不自動彈跳視窗
     const isMobile = window.innerWidth <= 768
     if (!isMobile) {
-      window.open(`${window.location.origin}/projection?mode=projector&room=${sessionId}`, '_blank', 'width=1280,height=720')
+      window.open(url, '_blank', 'width=1280,height=720')
+    } else {
+      // 手機版自動複製連結
+      copyUrl(url)
     }
 
     connectWS(sessionId)
@@ -374,27 +391,16 @@ export default function ProjectionPage() {
                     />
                   </div>
                   <div className="proj-qr-label">掃描加入同步觀看</div>
-                  <div className="proj-qr-link">
-                    <button
-                      className="proj-link-btn"
-                      onClick={() => {
-                        const url = `${window.location.origin}/projection?mode=projector&room=${room}`
-                        navigator.clipboard.writeText(url).then(() => {
-                          // 可以加入複製成功的提示
-                          alert('連結已複製到剪貼簿')
-                        }).catch(() => {
-                          // 複製失敗時的備用方案
-                          const textArea = document.createElement('textarea')
-                          textArea.value = url
-                          document.body.appendChild(textArea)
-                          textArea.select()
-                          document.execCommand('copy')
-                          document.body.removeChild(textArea)
-                          alert('連結已複製到剪貼簿')
-                        })
-                      }}
-                    >
+                  <div className="proj-url-row">
+                    <div className="proj-url-display">
                       {`${window.location.origin}/projection?mode=projector&room=${room}`}
+                    </div>
+                    <button
+                      className={`proj-copy-btn ${copied ? 'proj-copy-btn--copied' : ''}`}
+                      onClick={() => copyUrl(`${window.location.origin}/projection?mode=projector&room=${room}`)}
+                    >
+                      {copied ? <Check size={14} /> : <Copy size={14} />}
+                      <span>{copied ? '已複製' : '複製'}</span>
                     </button>
                   </div>
                 </div>

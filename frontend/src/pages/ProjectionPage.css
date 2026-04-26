@@ -254,32 +254,55 @@
   text-align: center;
 }
 
-.proj-qr-link {
+.proj-url-row {
   margin-top: 0.5rem;
-  text-align: center;
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  width: 100%;
+  background: rgba(0, 0, 0, 0.3);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 8px;
+  padding: 0.4rem 0.5rem;
+  box-sizing: border-box;
 }
 
-.proj-link-btn {
-  background: none;
-  border: none;
+.proj-url-display {
+  flex: 1;
   color: #94a3b8;
-  font-size: 0.7rem;
+  font-size: 0.65rem;
   font-family: monospace;
-  text-decoration: underline;
-  cursor: pointer;
-  padding: 0.25rem 0.5rem;
-  border-radius: 4px;
-  transition: all 0.2s;
   word-break: break-all;
-  max-width: 100%;
-  overflow: hidden;
-  text-overflow: ellipsis;
+  line-height: 1.4;
+}
+
+.proj-copy-btn {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+  background: #3b82f6;
+  color: white;
+  border: none;
+  border-radius: 6px;
+  padding: 0.35rem 0.6rem;
+  font-size: 0.75rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+  flex-shrink: 0;
   white-space: nowrap;
 }
 
-.proj-link-btn:hover {
-  color: #60a5fa;
-  background: rgba(96, 165, 250, 0.1);
+.proj-copy-btn:hover {
+  background: #60a5fa;
+}
+
+.proj-copy-btn--copied {
+  background: #22c55e;
+}
+
+.proj-copy-btn--copied:hover {
+  background: #4ade80;
 }
 
 /* ── PROJECTOR DISPLAY MODE ─────────────────────────── */
