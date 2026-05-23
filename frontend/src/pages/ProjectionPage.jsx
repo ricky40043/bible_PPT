@@ -8,6 +8,9 @@ const API = isProd ? window.location.origin : 'http://localhost:5001'
 const WS_URL = isProd
   ? `${window.location.protocol === 'https:' ? 'wss' : 'ws'}://${window.location.host}/ws`
   : 'ws://localhost:5001/ws'
+const secureOrigin = isProd
+  ? window.location.origin.replace(/^http:/, 'https:')
+  : window.location.origin
 
 export default function ProjectionPage() {
   const params = new URLSearchParams(window.location.search)
@@ -69,25 +72,36 @@ export default function ProjectionPage() {
 
   const connectWS = (roomId) => {
     const socket = new WebSocket(`${WS_URL}/${roomId}`)
+    let pingTimer = null
+
     socket.onopen = () => {
-      // Projector display: request current state from controller
       if (isProjectorMode) {
         socket.send(JSON.stringify({ type: 'REQUEST_SYNC' }))
       }
+      // Keep connection alive through proxies that cut idle WebSockets
+      pingTimer = setInterval(() => {
+        if (socket.readyState === WebSocket.OPEN) {
+          socket.send(JSON.stringify({ type: 'PING' }))
+        }
+      }, 25000)
     }
     socket.onmessage = (event) => {
       const data = JSON.parse(event.data)
       if (data.type === 'SYNC') {
         setCurrentVerse(data.payload)
+      } else if (data.type === 'PONG') {
+        // heartbeat acknowledged, nothing to do
       } else if (data.type === 'REQUEST_SYNC' && !isProjectorMode) {
-        // A new viewer joined — re-send current verse as-is
         const cv = currentVerseRef.current
         if (cv && socket.readyState === WebSocket.OPEN) {
           socket.send(JSON.stringify({ type: 'SYNC', payload: cv }))
         }
       }
     }
-    socket.onclose = () => setTimeout(() => connectWS(roomId), 3000)
+    socket.onclose = () => {
+      clearInterval(pingTimer)
+      setTimeout(() => connectWS(roomId), 3000)
+    }
     socketRef.current = socket
     return socket
   }
@@ -212,21 +226,37 @@ export default function ProjectionPage() {
   }
 
   const copyUrl = (url) => {
-    navigator.clipboard.writeText(url).catch(() => {
-      const textArea = document.createElement('textarea')
-      textArea.value = url
-      document.body.appendChild(textArea)
-      textArea.select()
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(url).then(() => {
+        setCopied(true)
+        setTimeout(() => setCopied(false), 2000)
+      }).catch(() => fallbackCopy(url))
+    } else {
+      fallbackCopy(url)
+    }
+  }
+
+  const fallbackCopy = (url) => {
+    const textArea = document.createElement('textarea')
+    textArea.value = url
+    textArea.style.position = 'fixed'
+    textArea.style.opacity = '0'
+    document.body.appendChild(textArea)
+    textArea.focus()
+    textArea.select()
+    try {
       document.execCommand('copy')
-      document.body.removeChild(textArea)
-    })
-    setCopied(true)
-    setTimeout(() => setCopied(false), 2000)
+      setCopied(true)
+      setTimeout(() => setCopied(false), 2000)
+    } catch (err) {
+      console.error('複製失敗', err)
+    }
+    document.body.removeChild(textArea)
   }
 
   const handleOpenProjector = () => {
     const sessionId = Math.random().toString(36).substring(2, 8).toUpperCase()
-    const url = `${window.location.origin}/projection?mode=projector&room=${sessionId}`
+    const url = `${secureOrigin}/projection?mode=projector&room=${sessionId}`
     setRoom(sessionId)
     setProjectorOpen(true)
 
@@ -271,7 +301,7 @@ export default function ProjectionPage() {
   if (isProjectorMode) {
     return (
       <div className="projector-root">
-        {currentVerse && (
+        {currentVerse ? (
           <div className="projector-container">
             <div className="projector-title">{currentVerse.title}</div>
             <div className="projector-body">
@@ -280,6 +310,8 @@ export default function ProjectionPage() {
             </div>
             <div className="projector-version">({currentVerse.version})</div>
           </div>
+        ) : (
+          <div className="projector-waiting">等待控制端送出經文…</div>
         )}
       </div>
     )
@@ -384,7 +416,7 @@ export default function ProjectionPage() {
                 <div className="proj-qr-wrap">
                   <div className="proj-qr-box">
                     <QRCodeSVG
-                      value={`${window.location.origin}/projection?mode=projector&room=${room}`}
+                      value={`${secureOrigin}/projection?mode=projector&room=${room}`}
                       size={110}
                       bgColor="#FFFFFF"
                       fgColor="#000000"
@@ -393,11 +425,11 @@ export default function ProjectionPage() {
                   <div className="proj-qr-label">掃描加入同步觀看</div>
                   <div className="proj-url-row">
                     <div className="proj-url-display">
-                      {`${window.location.origin}/projection?mode=projector&room=${room}`}
+                      {`${secureOrigin}/projection?mode=projector&room=${room}`}
                     </div>
                     <button
                       className={`proj-copy-btn ${copied ? 'proj-copy-btn--copied' : ''}`}
-                      onClick={() => copyUrl(`${window.location.origin}/projection?mode=projector&room=${room}`)}
+                      onClick={() => copyUrl(`${secureOrigin}/projection?mode=projector&room=${room}`)}
                     >
                       {copied ? <Check size={14} /> : <Copy size={14} />}
                       <span>{copied ? '已複製' : '複製'}</span>

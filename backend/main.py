@@ -99,9 +99,10 @@ async def websocket_endpoint(websocket: WebSocket, room_id: str):
     await manager.connect(websocket, room_id)
     try:
         while True:
-            # 接收來自控制端的訊息 (JSON)
             data = await websocket.receive_json()
-            # 廣播給同一個 Room 的所有人 (包含投影端)
+            if data.get('type') == 'PING':
+                await websocket.send_json({'type': 'PONG'})
+                continue
             await manager.broadcast(data, room_id)
     except WebSocketDisconnect:
         manager.disconnect(websocket, room_id)

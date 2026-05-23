@@ -26,4 +26,4 @@ ENV PYTHONUNBUFFERED=1
 
 # 使用 Gunicorn 啟動。這比單純的 uvicorn 更能處理啟動時的超時與健康檢查問題
 # $PORT 會由 Cloud Run 自動注入
-CMD gunicorn main:app --workers 1 --worker-class uvicorn.workers.UvicornWorker --bind 0.0.0.0:$PORT --timeout 120
+CMD gunicorn main:app --workers 1 --worker-class uvicorn.workers.UvicornWorker --bind 0.0.0.0:$PORT --timeout 0 --keep-alive 75
