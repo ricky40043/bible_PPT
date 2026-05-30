@@ -171,6 +171,9 @@ def generate_bible_ppt(version: str, book_zh: str, chapter: int, verses: list,
         if len(tf_shapes) >= 4:
             _update_shape_text(tf_shapes[3], f"({version})" if include_version else "")
 
+        if i == 0 and len(tf_shapes) >= 4:
+            _apply_shape_text_style(tf_shapes[3], _TEXT_STYLES[3])
+
         if i > 0:
             for shape, style in zip(tf_shapes, _TEXT_STYLES):
                 _apply_shape_text_style(shape, style)
