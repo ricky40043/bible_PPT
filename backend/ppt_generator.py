@@ -49,7 +49,7 @@ _TEXT_STYLES = (
     {"size": 36, "color": RGBColor(0xFF, 0xFF, 0x00), "bold": True},
     {"size": 54, "color": RGBColor(0xFF, 0xFF, 0x00), "bold": True},
     {"size": 54, "color": RGBColor(0xFF, 0xFF, 0xFF), "bold": True},
-    {"size": 40, "color": RGBColor(0xFF, 0xFF, 0xFF), "bold": True},
+    {"size": 40, "color": RGBColor(0xFB, 0xE4, 0xD4), "bold": True},
 )
 
 
