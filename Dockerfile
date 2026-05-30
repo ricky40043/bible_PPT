@@ -16,6 +16,9 @@ RUN pip install --no-cache-dir -r requirements.txt gunicorn
 # 複製後端 Python 文件
 COPY backend/*.py ./
 
+# 複製 PPT 範本；產生簡報時 python-pptx 需要讀取這個檔案
+COPY ["經文範本.pptx", "./經文範本.pptx"]
+
 # 複製前端成品
 # 這裡確保 frontend/dist 的路徑與 main.py 相符
 RUN mkdir -p frontend/dist

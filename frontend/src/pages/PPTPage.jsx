@@ -96,6 +96,25 @@ export default function PPTPage() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload),
       })
+
+      if (!res.ok) {
+        const contentType = res.headers.get('content-type') || ''
+        let message = `下載失敗 (${res.status})`
+        if (contentType.includes('application/json')) {
+          const data = await res.json()
+          message = data.detail || message
+        } else {
+          const text = await res.text()
+          if (text) message = text
+        }
+        throw new Error(message)
+      }
+
+      const contentType = res.headers.get('content-type') || ''
+      if (!contentType.includes('presentationml.presentation')) {
+        throw new Error('伺服器沒有回傳 PPTX 檔案')
+      }
+
       const blob = await res.blob()
       const bookName = books.find(b => b.id === formData.book)?.name || formData.book
       const filename = `${bookName} ${formData.chapter}:${formData.verse_start}-${formData.verse_end}.pptx`

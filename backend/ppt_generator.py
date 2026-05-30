@@ -10,12 +10,33 @@ ppt_generator.py
 
 from pptx import Presentation
 from pptx.oxml.ns import qn
+from pathlib import Path
 import copy
 import io
 import os
 
-_HERE = os.path.dirname(os.path.abspath(__file__))
-TEMPLATE_PATH = os.path.join(_HERE, "..", "經文範本.pptx")
+_HERE = Path(__file__).resolve().parent
+_TEMPLATE_NAME = "經文範本.pptx"
+
+
+def _resolve_template_path() -> str:
+    env_path = os.environ.get("BIBLE_PPT_TEMPLATE")
+    candidates = [
+        Path(env_path) if env_path else None,
+        _HERE / _TEMPLATE_NAME,
+        _HERE.parent / _TEMPLATE_NAME,
+        Path.cwd() / _TEMPLATE_NAME,
+    ]
+
+    for candidate in candidates:
+        if candidate and candidate.exists():
+            return str(candidate)
+
+    checked = ", ".join(str(c) for c in candidates if c)
+    raise FileNotFoundError(f"找不到 PPT 範本 {_TEMPLATE_NAME}; checked: {checked}")
+
+
+TEMPLATE_PATH = _resolve_template_path()
 
 _SHAPE_TAGS = {qn("p:sp"), qn("p:pic"), qn("p:graphicFrame"), qn("p:grpSp"), qn("p:contentPart")}
 
