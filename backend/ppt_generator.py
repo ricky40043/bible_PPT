@@ -10,6 +10,8 @@ ppt_generator.py
 
 from pptx import Presentation
 from pptx.oxml.ns import qn
+from pptx.dml.color import RGBColor
+from pptx.util import Pt
 from pathlib import Path
 import copy
 import io
@@ -43,6 +45,13 @@ _CSLD_TAG = qn("p:cSld")
 _BG_TAG = qn("p:bg")
 _SPTREE_TAG = qn("p:spTree")
 
+_TEXT_STYLES = (
+    {"size": 54, "color": RGBColor(0xFF, 0xFF, 0x00), "bold": True},
+    {"size": 54, "color": RGBColor(0xFF, 0xFF, 0x00), "bold": True},
+    {"size": 54, "color": RGBColor(0xFF, 0xFF, 0xFF), "bold": True},
+    {"size": 40, "color": RGBColor(0xFF, 0xFF, 0xFF), "bold": True},
+)
+
 
 def _update_shape_text(shape, text):
     """Update first run text in first paragraph, preserving all other formatting."""
@@ -56,6 +65,19 @@ def _update_shape_text(shape, text):
             for run in runs[1:]:
                 run.text = ""
         break
+
+
+def _apply_shape_text_style(shape, style):
+    """Write direct run styling so cloned placeholders render consistently."""
+    if not shape.has_text_frame:
+        return
+
+    for para in shape.text_frame.paragraphs:
+        for run in para.runs:
+            font = run.font
+            font.size = Pt(style["size"])
+            font.color.rgb = style["color"]
+            font.bold = style["bold"]
 
 
 def _clone_shapes(ref_sp_tree, dst_sp_tree):
@@ -148,6 +170,9 @@ def generate_bible_ppt(version: str, book_zh: str, chapter: int, verses: list,
             _update_shape_text(tf_shapes[2], verse['text'])
         if len(tf_shapes) >= 4:
             _update_shape_text(tf_shapes[3], f"({version})" if include_version else "")
+
+        for shape, style in zip(tf_shapes, _TEXT_STYLES):
+            _apply_shape_text_style(shape, style)
 
     ppt_stream = io.BytesIO()
     prs.save(ppt_stream)
