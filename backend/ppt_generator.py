@@ -40,13 +40,6 @@ def _resolve_template_path() -> str:
 
 TEMPLATE_PATH = _resolve_template_path()
 
-_TEXT_STYLES = (
-    {"size": 36, "color": RGBColor(0xFF, 0xFF, 0x00), "bold": True},
-    {"size": 54, "color": RGBColor(0xFF, 0xFF, 0x00), "bold": True},
-    {"size": 54, "color": RGBColor(0xFF, 0xFF, 0xFF), "bold": True},
-    {"size": 40, "color": RGBColor(0xFB, 0xE4, 0xD4), "bold": True},
-)
-
 
 def _duplicate_slide_content(ref_slide_element, dst_slide_element):
     """Replace a new slide's XML content with a deep copy of the reference slide."""
@@ -74,26 +67,6 @@ def _update_shape_text_xml(shape_element, text):
     for text_node in text_nodes[1:]:
         text_node.text = ""
 
-
-def _apply_shape_text_style_xml(shape_element, style):
-    """Write direct XML run styling so duplicated placeholders render consistently."""
-    for run in shape_element.findall(".//" + qn("a:r")):
-        r_pr = run.find(qn("a:rPr"))
-        if r_pr is None:
-            r_pr = OxmlElement("a:rPr")
-            run.insert(0, r_pr)
-
-        r_pr.set("sz", str(style["size"] * 100))
-        r_pr.set("b", "1" if style["bold"] else "0")
-
-        for solid_fill in list(r_pr.findall(qn("a:solidFill"))):
-            r_pr.remove(solid_fill)
-
-        solid_fill = OxmlElement("a:solidFill")
-        srgb_clr = OxmlElement("a:srgbClr")
-        srgb_clr.set("val", str(style["color"]))
-        solid_fill.append(srgb_clr)
-        r_pr.append(solid_fill)
 
 
 def generate_bible_ppt(version: str, book_zh: str, chapter: int, verses: list,
@@ -133,9 +106,9 @@ def generate_bible_ppt(version: str, book_zh: str, chapter: int, verses: list,
         xml_slides.remove(sldId)
 
     # Add slides for verses beyond the first, then duplicate slide 1's XML content.
-    blank_layout = prs.slide_layouts[0]
+    ref_layout = prs.slides[0].slide_layout
     for _ in valid_verses[1:]:
-        slide = prs.slides.add_slide(blank_layout)
+        slide = prs.slides.add_slide(ref_layout)
         _duplicate_slide_content(ref_slide_element, slide._element)
 
     # Update all slides with verse content
@@ -151,13 +124,6 @@ def generate_bible_ppt(version: str, book_zh: str, chapter: int, verses: list,
             _update_shape_text_xml(tf_shapes[2], verse['text'])
         if len(tf_shapes) >= 4:
             _update_shape_text_xml(tf_shapes[3], f"({version})" if include_version else "")
-
-        if i == 0 and len(tf_shapes) >= 4:
-            _apply_shape_text_style_xml(tf_shapes[3], _TEXT_STYLES[3])
-
-        if i > 0:
-            for shape, style in zip(tf_shapes, _TEXT_STYLES):
-                _apply_shape_text_style_xml(shape, style)
 
     ppt_stream = io.BytesIO()
     prs.save(ppt_stream)
