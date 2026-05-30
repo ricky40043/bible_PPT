@@ -39,6 +39,9 @@ def _resolve_template_path() -> str:
 TEMPLATE_PATH = _resolve_template_path()
 
 _SHAPE_TAGS = {qn("p:sp"), qn("p:pic"), qn("p:graphicFrame"), qn("p:grpSp"), qn("p:contentPart")}
+_CSLD_TAG = qn("p:cSld")
+_BG_TAG = qn("p:bg")
+_SPTREE_TAG = qn("p:spTree")
 
 
 def _update_shape_text(shape, text):
@@ -63,6 +66,29 @@ def _clone_shapes(ref_sp_tree, dst_sp_tree):
     for elem in ref_sp_tree:
         if elem.tag in _SHAPE_TAGS:
             dst_sp_tree.append(copy.deepcopy(elem))
+
+
+def _clone_background(ref_slide_element, dst_slide_element):
+    """Copy the reference slide background so new slides don't inherit master green."""
+    ref_c_sld = ref_slide_element.find(_CSLD_TAG)
+    dst_c_sld = dst_slide_element.find(_CSLD_TAG)
+    if ref_c_sld is None or dst_c_sld is None:
+        return
+
+    ref_bg = ref_c_sld.find(_BG_TAG)
+    if ref_bg is None:
+        return
+
+    for elem in list(dst_c_sld):
+        if elem.tag == _BG_TAG:
+            dst_c_sld.remove(elem)
+
+    sp_tree = dst_c_sld.find(_SPTREE_TAG)
+    bg_copy = copy.deepcopy(ref_bg)
+    if sp_tree is None:
+        dst_c_sld.insert(0, bg_copy)
+    else:
+        dst_c_sld.insert(dst_c_sld.index(sp_tree), bg_copy)
 
 
 def generate_bible_ppt(version: str, book_zh: str, chapter: int, verses: list,
@@ -95,6 +121,7 @@ def generate_bible_ppt(version: str, book_zh: str, chapter: int, verses: list,
 
     # Deep-copy the reference spTree before any modifications
     ref_sp_tree = copy.deepcopy(prs.slides[0].shapes._spTree)
+    ref_slide_element = copy.deepcopy(prs.slides[0]._element)
 
     # Remove all extra template slides beyond the first
     xml_slides = prs.slides._sldIdLst
@@ -105,6 +132,7 @@ def generate_bible_ppt(version: str, book_zh: str, chapter: int, verses: list,
     blank_layout = prs.slide_layouts[0]
     for _ in valid_verses[1:]:
         slide = prs.slides.add_slide(blank_layout)
+        _clone_background(ref_slide_element, slide._element)
         _clone_shapes(ref_sp_tree, slide.shapes._spTree)
 
     # Update all slides with verse content
