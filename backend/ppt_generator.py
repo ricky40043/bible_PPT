@@ -46,8 +46,8 @@ _BG_TAG = qn("p:bg")
 _SPTREE_TAG = qn("p:spTree")
 
 _TEXT_STYLES = (
-    {"size": 54, "color": RGBColor(0xFF, 0xFF, 0x00), "bold": True},
     {"size": 36, "color": RGBColor(0xFF, 0xFF, 0x00), "bold": True},
+    {"size": 54, "color": RGBColor(0xFF, 0xFF, 0x00), "bold": True},
     {"size": 54, "color": RGBColor(0xFF, 0xFF, 0xFF), "bold": True},
     {"size": 40, "color": RGBColor(0xFF, 0xFF, 0xFF), "bold": True},
 )
