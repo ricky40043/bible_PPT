@@ -65,9 +65,14 @@ def _update_shape_text_xml(shape_element, text):
         return
     text_nodes[0].text = text
     for text_node in text_nodes[1:]:
-        parent = text_node.getparent()
-        if parent is not None:
-            parent.remove(text_node)
+        parent_r = text_node.getparent()
+        if parent_r is not None:
+            grandparent_p = parent_r.getparent()
+            # 如果 text_node 的父節點是 a:r，且其父節點是 a:p，直接將整個 a:r (Run) 移除
+            if grandparent_p is not None and parent_r.tag.endswith('r'):
+                grandparent_p.remove(parent_r)
+            else:
+                parent_r.remove(text_node)
 
 
 
