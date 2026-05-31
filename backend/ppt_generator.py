@@ -65,7 +65,9 @@ def _update_shape_text_xml(shape_element, text):
         return
     text_nodes[0].text = text
     for text_node in text_nodes[1:]:
-        text_node.text = ""
+        parent = text_node.getparent()
+        if parent is not None:
+            parent.remove(text_node)
 
 
 
