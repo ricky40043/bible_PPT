@@ -30,7 +30,7 @@ export default function PPTPage() {
         const bRes = await fetch(`${API}/api/books`)
         const bData = await bRes.json()
         setBooks(bData)
-      } catch (err) {
+      } catch {
         setError('後端服務未啟動')
       }
     }

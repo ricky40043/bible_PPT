@@ -58,7 +58,7 @@ export default function ReadingPage() {
         setTimeout(() => {
           contentRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })
         }, 100)
-      } catch (err) {
+      } catch {
         setError('載入失敗')
       }
       setLoading(false)

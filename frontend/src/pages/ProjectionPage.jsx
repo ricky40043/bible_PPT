@@ -50,11 +50,6 @@ export default function ProjectionPage() {
     fetchOptions()
   }, [])
 
-  // ── Connect WebSocket (projector display mode on open) ──────────
-  useEffect(() => {
-    if (isProjectorMode && urlRoom) connectWS(urlRoom)
-  }, [])
-
   const currentVerseRef = useRef(null)
   const currentIndexRef = useRef(0)
   const chapterContentRef = useRef([])
@@ -70,7 +65,9 @@ export default function ProjectionPage() {
   useEffect(() => { booksRef.current = books }, [books])
   useEffect(() => { versionsRef.current = versions }, [versions])
 
-  const connectWS = (roomId) => {
+  const prevFormDataRef = useRef(formData)
+
+  function connectWS(roomId) {
     const socket = new WebSocket(`${WS_URL}/${roomId}`)
     let pingTimer = null
 
@@ -106,6 +103,11 @@ export default function ProjectionPage() {
     return socket
   }
 
+  // ── Connect WebSocket (projector display mode on open) ──────────
+  useEffect(() => {
+    if (isProjectorMode && urlRoom) connectWS(urlRoom)
+  }, [])
+
   // ── Fetch chapters when book changes ────────────────────────────
   useEffect(() => {
     const getChapters = async () => {
@@ -119,33 +121,8 @@ export default function ProjectionPage() {
     getChapters()
   }, [formData.book])
 
-  // ── Fetch chapter content ────────────────────────────────────────
-  useEffect(() => {
-    const fetchChapter = async () => {
-      if (!formData.book || !formData.chapter || !formData.version) return
-      setLoadingContent(true)
-      try {
-        const res = await fetch(`${API}/api/verses_list/${formData.version}/${formData.book}/${formData.chapter}`)
-        const data = await res.json()
-        setChapterContent(data)
-        setCurrentIndex(0) // reset position whenever new chapter loads
-
-        if (pendingNextRef.current && data.length > 0) {
-          // Auto-advance from navigation — sync first verse immediately
-          sendSyncData(data[0], 0, data)
-          pendingNextRef.current = false
-          navTriggeredRef.current = false
-        } else {
-          navTriggeredRef.current = false
-        }
-      } catch (err) { console.error(err) }
-      setLoadingContent(false)
-    }
-    fetchChapter()
-  }, [formData.book, formData.chapter, formData.version])
-
   // sendSyncData uses passed-in data (avoids stale closure)
-  const sendSyncData = (verse, index, content, fData, booksData, versionsData) => {
+  function sendSyncData(verse, index, content, fData, booksData, versionsData) {
     const fd = fData || formData
     const bl = booksData || books
     const vl = versionsData || versions
@@ -175,6 +152,52 @@ export default function ProjectionPage() {
   }
 
   const sendSync = (verse, index) => sendSyncData(verse, index, chapterContent)
+
+  // ── Fetch chapter content ────────────────────────────────────────
+  useEffect(() => {
+    const fetchChapter = async () => {
+      if (!formData.book || !formData.chapter || !formData.version) return
+      setLoadingContent(true)
+      try {
+        const res = await fetch(`${API}/api/verses_list/${formData.version}/${formData.book}/${formData.chapter}`)
+        const data = await res.json()
+        setChapterContent(data)
+
+        // 決定要同步投影的經文索引位置
+        let targetIndex = 0
+        const prevFd = prevFormDataRef.current
+        if (
+          prevFd &&
+          prevFd.book === formData.book &&
+          prevFd.chapter === formData.chapter &&
+          prevFd.version !== formData.version
+        ) {
+          // 只切換了版本：嘗試保留當前的經文索引位置
+          targetIndex = Math.min(currentIndexRef.current, data.length - 1)
+          if (targetIndex < 0) targetIndex = 0
+        }
+
+        setCurrentIndex(targetIndex)
+
+        if (data.length > 0) {
+          // 只要開啟了投影，或是導航切換，就立刻進行投影同步
+          if (projectorOpen || socketRef.current?.readyState === WebSocket.OPEN || pendingNextRef.current) {
+            sendSyncData(data[targetIndex], targetIndex, data, formData)
+            pendingNextRef.current = false
+            navTriggeredRef.current = false
+          } else {
+            navTriggeredRef.current = false
+          }
+        } else {
+          navTriggeredRef.current = false
+        }
+      } catch (err) { console.error(err) }
+      setLoadingContent(false)
+      // 更新 prevFormDataRef 為當前的 formData
+      prevFormDataRef.current = formData
+    }
+    fetchChapter()
+  }, [formData.book, formData.chapter, formData.version])
 
   const handlePrev = () => {
     if (currentIndex > 0) {
