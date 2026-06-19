@@ -329,7 +329,7 @@
 .projector-container {
   width: 100%;
   height: 100%;
-  padding: 6vh 7.5vw;
+  padding: 6vh 3vw;
   box-sizing: border-box;
   display: flex;
   flex-direction: column;
@@ -350,7 +350,8 @@
 .projector-body {
   flex: 1;
   display: block;
-  margin-top: 8vh;
+  margin-top: 0;
+  max-width: 80vw;
 }
 
 .projector-num {
@@ -376,11 +377,11 @@
 
 .projector-version {
   color: #e2d6be;
-  font-size: 5vh;
+  font-size: 6vh;
   font-weight: bold;
   opacity: 0.9;
   flex-shrink: 0;
-  margin-top: 22vh;
+  margin-top: 15vh;
 }
 
 /* Mobile: smaller text, scrollable */
@@ -398,7 +399,7 @@
     font-family: "華康粗圓體", "華康粗圓體(P)", "DFPShowGothic-W7", "DFShowGothic-W7", "DFWupao-W7", "DFPYuanBold-B5", "DFYuanBold-B5", "DFPShowGothic-GP", "DFShowGothic-GP", "DFPYuanMedium-B5", "DFYuan-Bold", "DFRoundGothic-Bold", "DFPRoundGothic-Bold", "PingFang TC", "Microsoft JhengHei", sans-serif;
   }
   .projector-version {
-    font-size: 3.5vw;
+    font-size: 6vw;
   }
   .projector-container {
     padding: 4vw;
