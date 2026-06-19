@@ -341,7 +341,7 @@
 
 .projector-title {
   color: #FFFF00;
-  font-size: 6vh;
+  font-size: 7.5vh;
   font-weight: bold;
   flex-shrink: 0;
 }
@@ -353,7 +353,7 @@
 }
 
 .projector-num {
-  font-size: 4.2vh;
+  font-size: 4.8vh;
   color: #FFFF00;
   font-weight: bold;
   position: relative;
@@ -363,7 +363,7 @@
 }
 
 .projector-text {
-  font-size: 6vh;
+  font-size: 7.5vh;
   color: #FFFFFF;
   line-height: 1.65;
   word-break: break-all;
@@ -382,13 +382,13 @@
 /* Mobile: smaller text, scrollable */
 @media (max-width: 768px) {
   .projector-title {
-    font-size: 6.5vw;
+    font-size: 7.5vw;
   }
   .projector-text {
-    font-size: 6.5vw;
+    font-size: 7.5vw;
   }
   .projector-num {
-    font-size: 4.5vw;
+    font-size: 4.8vw;
   }
   .projector-version {
     font-size: 3.5vw;
