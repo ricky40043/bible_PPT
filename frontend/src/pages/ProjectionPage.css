@@ -315,7 +315,7 @@
   justify-content: center;
   color: white;
   z-index: 10000;
-  font-family: "PingFang TC", "Microsoft JhengHei", sans-serif;
+  font-family: "華康粗圓體", "DFPShowGothic-W7", "DFShowGothic-W7", "華康圓體", "DFYuanBold-B5", "PingFang TC", "Microsoft JhengHei", sans-serif;
   /* Disable pull-to-refresh */
   overscroll-behavior: contain;
   touch-action: pan-y;
@@ -341,7 +341,7 @@
 
 .projector-title {
   color: #FFFF00;
-  font-size: 5.5vh;
+  font-size: 10.5vh;
   font-weight: bold;
   flex-shrink: 0;
 }
@@ -353,7 +353,7 @@
 }
 
 .projector-num {
-  font-size: 4.5vh;
+  font-size: 6.5vh;
   color: #FFFF00;
   font-weight: bold;
   vertical-align: super;
@@ -362,7 +362,7 @@
 }
 
 .projector-text {
-  font-size: 7vh;
+  font-size: 10.5vh;
   color: #FFFFFF;
   line-height: 1.4;
   word-break: break-all;
@@ -381,16 +381,16 @@
 /* Mobile: smaller text, scrollable */
 @media (max-width: 768px) {
   .projector-title {
-    font-size: 4.5vw;
+    font-size: 9vw;
   }
   .projector-text {
-    font-size: 6vw;
+    font-size: 9vw;
   }
   .projector-num {
-    font-size: 4vw;
+    font-size: 6vw;
   }
   .projector-version {
-    font-size: 3.5vw;
+    font-size: 5vw;
   }
   .projector-container {
     padding: 4vw;
