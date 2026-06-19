@@ -341,8 +341,9 @@
 
 .projector-title {
   color: #FFFF00;
-  font-size: 7.5vh;
+  font-size: 8.4vh;
   font-weight: bold;
+  font-family: "華康粗圓體", "華康粗圓體(P)", "DFPShowGothic-W7", "DFShowGothic-W7", "DFWupao-W7", "DFPYuanBold-B5", "DFYuanBold-B5", "DFPShowGothic-GP", "DFShowGothic-GP", "DFPYuanMedium-B5", "DFYuan-Bold", "DFRoundGothic-Bold", "DFPRoundGothic-Bold", "PingFang TC", "Microsoft JhengHei", sans-serif;
   flex-shrink: 0;
 }
 
@@ -353,9 +354,10 @@
 }
 
 .projector-num {
-  font-size: 4.8vh;
+  font-size: 5.2vh;
   color: #FFFF00;
   font-weight: bold;
+  font-family: "華康粗圓體", "華康粗圓體(P)", "DFPShowGothic-W7", "DFShowGothic-W7", "DFWupao-W7", "DFPYuanBold-B5", "DFYuanBold-B5", "DFPShowGothic-GP", "DFShowGothic-GP", "DFPYuanMedium-B5", "DFYuan-Bold", "DFRoundGothic-Bold", "DFPRoundGothic-Bold", "PingFang TC", "Microsoft JhengHei", sans-serif;
   position: relative;
   top: -0.35em;
   margin-right: 1vw;
@@ -363,11 +365,12 @@
 }
 
 .projector-text {
-  font-size: 7.5vh;
+  font-size: 8.4vh;
   color: #FFFFFF;
   line-height: 1.65;
   word-break: break-all;
   font-weight: bold;
+  font-family: "華康粗圓體", "華康粗圓體(P)", "DFPShowGothic-W7", "DFShowGothic-W7", "DFWupao-W7", "DFPYuanBold-B5", "DFYuanBold-B5", "DFPShowGothic-GP", "DFShowGothic-GP", "DFPYuanMedium-B5", "DFYuan-Bold", "DFRoundGothic-Bold", "DFPRoundGothic-Bold", "PingFang TC", "Microsoft JhengHei", sans-serif;
   display: inline;
 }
 
@@ -382,13 +385,16 @@
 /* Mobile: smaller text, scrollable */
 @media (max-width: 768px) {
   .projector-title {
-    font-size: 7.5vw;
+    font-size: 8.4vw;
+    font-family: "華康粗圓體", "華康粗圓體(P)", "DFPShowGothic-W7", "DFShowGothic-W7", "DFWupao-W7", "DFPYuanBold-B5", "DFYuanBold-B5", "DFPShowGothic-GP", "DFShowGothic-GP", "DFPYuanMedium-B5", "DFYuan-Bold", "DFRoundGothic-Bold", "DFPRoundGothic-Bold", "PingFang TC", "Microsoft JhengHei", sans-serif;
   }
   .projector-text {
-    font-size: 7.5vw;
+    font-size: 8.4vw;
+    font-family: "華康粗圓體", "華康粗圓體(P)", "DFPShowGothic-W7", "DFShowGothic-W7", "DFWupao-W7", "DFPYuanBold-B5", "DFYuanBold-B5", "DFPShowGothic-GP", "DFShowGothic-GP", "DFPYuanMedium-B5", "DFYuan-Bold", "DFRoundGothic-Bold", "DFPRoundGothic-Bold", "PingFang TC", "Microsoft JhengHei", sans-serif;
   }
   .projector-num {
-    font-size: 4.8vw;
+    font-size: 5.2vw;
+    font-family: "華康粗圓體", "華康粗圓體(P)", "DFPShowGothic-W7", "DFShowGothic-W7", "DFWupao-W7", "DFPYuanBold-B5", "DFYuanBold-B5", "DFPShowGothic-GP", "DFShowGothic-GP", "DFPYuanMedium-B5", "DFYuan-Bold", "DFRoundGothic-Bold", "DFPRoundGothic-Bold", "PingFang TC", "Microsoft JhengHei", sans-serif;
   }
   .projector-version {
     font-size: 3.5vw;
