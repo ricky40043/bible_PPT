@@ -128,11 +128,19 @@ export default function ProjectionPage() {
     const vl = versionsData || versions
     const ct = content || chapterContent
     const bookName = bl.find(b => b.id === fd.book)?.name || fd.book
-    const versionName = vl.find(v => v.id === fd.version)?.name || fd.version
+    
+    // 版本名稱加上 ID 後綴，如 "和合本修訂版RCUV"
+    const versionObj = vl.find(v => v.id === fd.version)
+    const versionName = versionObj ? `${versionObj.name}${versionObj.id}` : fd.version
+
+    // 標題顯示該章的完整節數範圍，如 "出埃及記 1:1-22"
+    const rangeLabel = ct.length > 0 ? `1-${ct.length}` : verse.num
+    const titleText = `${bookName} ${fd.chapter}:${rangeLabel}`
+
     const payload = {
       type: 'SYNC',
       payload: {
-        title: `${bookName} ${fd.chapter}:${verse.num}`,
+        title: titleText,
         num: verse.num,
         text: verse.text,
         version: versionName,
