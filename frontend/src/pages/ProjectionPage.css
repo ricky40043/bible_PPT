@@ -348,20 +348,17 @@
 
 .projector-body {
   flex: 1;
-  display: flex;
-  align-items: flex-start;
+  display: block;
   margin-top: 4vh;
-  gap: 2vw;
 }
 
 .projector-num {
-  font-size: 4vh;
+  font-size: 4.5vh;
   color: #FFFF00;
   font-weight: bold;
-  margin-top: 1.5vh;
-  min-width: 4vw;
-  text-align: right;
-  flex-shrink: 0;
+  vertical-align: super;
+  margin-right: 1.5vw;
+  display: inline-block;
 }
 
 .projector-text {
@@ -369,10 +366,12 @@
   color: #FFFFFF;
   line-height: 1.4;
   word-break: break-all;
+  font-weight: bold;
+  display: inline;
 }
 
 .projector-version {
-  color: #FFFF00;
+  color: #e2d6be;
   font-size: 3.5vh;
   font-weight: bold;
   opacity: 0.9;
