@@ -119,6 +119,13 @@ def get_verses_list(version: str, book: str, chapter: int, start: Optional[int] 
 @app.websocket("/ws/{room_id}")
 async def websocket_endpoint(websocket: WebSocket, room_id: str):
     await manager.connect(websocket, room_id)
+    # 記錄投影連線（誰連進投影房間，含 IP）
+    ws_ip = (websocket.headers.get('cf-connecting-ip')
+             or websocket.headers.get('x-forwarded-for', '').split(',')[0].strip()
+             or (websocket.client.host if websocket.client else ''))
+    usage_db.log_usage(ws_ip, '/ws（投影連線）', summary=f"投影房間 {room_id}",
+        detail={'room': room_id}, status='ok',
+        user_agent=websocket.headers.get('user-agent', ''))
     try:
         while True:
             data = await websocket.receive_json()
@@ -227,15 +234,19 @@ if os.path.exists(frontend_path):
 
     # 退回路由：確保 React Router 的所有路徑都能正確載入 index.html
     @app.get("/{full_path:path}")
-    async def serve_frontend(full_path: str):
+    async def serve_frontend(full_path: str, request: Request):
         # 排除 API 與 WebSocket 請求
         if full_path.startswith("api") or full_path.startswith("ws"):
             return None
-        
+
+        # admin-bible 子網域：任何路徑都顯示後台
+        if request.headers.get('host', '').startswith('admin'):
+            return FileResponse(os.path.join(os.path.dirname(os.path.abspath(__file__)), "admin.html"))
+
         file_path = os.path.join(frontend_path, full_path)
         if os.path.isfile(file_path):
             return FileResponse(file_path)
-        
+
         # 預設返回 index.html (SPA)
         return FileResponse(os.path.join(frontend_path, "index.html"))
     print(">>> 前端託管配置完成。")
