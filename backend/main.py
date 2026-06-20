@@ -1,5 +1,5 @@
-from fastapi import FastAPI, HTTPException, WebSocket, WebSocketDisconnect
-from fastapi.responses import StreamingResponse, FileResponse
+from fastapi import FastAPI, HTTPException, WebSocket, WebSocketDisconnect, Request
+from fastapi.responses import StreamingResponse, FileResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.middleware.cors import CORSMiddleware
 import urllib.parse
@@ -20,6 +20,28 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+# ─────────────────────────── 使用紀錄 DB ──────────────────────────────
+import time
+import usage_db
+DATA_DIR = os.getenv('DATA_DIR', os.path.join(os.path.dirname(os.path.abspath(__file__)), 'data'))
+usage_db.init_db(os.path.join(DATA_DIR, 'usage.db'))
+ADMIN_TOKEN = os.getenv('ADMIN_TOKEN', '')
+
+def client_ip(request: Request):
+    return (request.headers.get('cf-connecting-ip')
+            or request.headers.get('x-forwarded-for', '').split(',')[0].strip()
+            or (request.client.host if request.client else '') or '')
+
+def _admin_ok(request: Request):
+    if not ADMIN_TOKEN:
+        return False
+    got = request.headers.get('x-admin-token') or request.query_params.get('token', '')
+    if not got:
+        a = request.headers.get('authorization', '')
+        if a.startswith('Bearer '):
+            got = a[7:]
+    return got == ADMIN_TOKEN
 
 class ConnectionManager:
     def __init__(self):
@@ -108,7 +130,8 @@ async def websocket_endpoint(websocket: WebSocket, room_id: str):
         manager.disconnect(websocket, room_id)
 
 @app.post("/api/generate")
-def generate_ppt(req: GenerateRequest):
+def generate_ppt(req: GenerateRequest, request: Request):
+    t0 = time.time()
     book_zh = next((b["name"] for b in BIBLE_BOOKS if b["id"] == req.book), req.book)
 
     try:
@@ -139,6 +162,13 @@ def generate_ppt(req: GenerateRequest):
         filename = f"{book_zh} {req.chapter}{final_range}.pptx"
         encoded_filename = urllib.parse.quote(filename, encoding='utf-8')
 
+        usage_db.log_usage(client_ip(request), '/api/generate（產出經文 PPT）',
+            summary=f"{book_zh} {req.chapter}{final_range}（{req.version}）",
+            detail={'version': req.version, 'book': req.book, 'chapter': req.chapter,
+                    'verse_start': req.verse_start, 'verse_end': req.verse_end, 'num_verses': len(verses)},
+            status='ok', duration_ms=(time.time()-t0)*1000,
+            user_agent=request.headers.get('user-agent', ''))
+
         return StreamingResponse(
             ppt_stream,
             media_type="application/vnd.openxmlformats-officedocument.presentationml.presentation",
@@ -148,7 +178,28 @@ def generate_ppt(req: GenerateRequest):
             }
         )
     except Exception as e:
+        usage_db.log_usage(client_ip(request), '/api/generate（產出經文 PPT）',
+            summary=f"{book_zh} {req.chapter}（{req.version}）", status='error', error=str(e),
+            duration_ms=(time.time()-t0)*1000, user_agent=request.headers.get('user-agent', ''))
         raise HTTPException(status_code=500, detail=str(e))
+
+# ─────────────────────────── 後台：使用紀錄 ────────────────────────────
+# 必須在前端 catch-all 路由之前註冊，否則會被 /{full_path} 吃掉。
+@app.get("/admin")
+def admin_page():
+    return FileResponse(os.path.join(os.path.dirname(os.path.abspath(__file__)), "admin.html"))
+
+@app.get("/api/admin/usage")
+def admin_usage(request: Request, limit: int = 100, offset: int = 0):
+    if not _admin_ok(request):
+        return JSONResponse({"error": "unauthorized"}, status_code=401)
+    return {"items": usage_db.list_usage(min(limit, 500), offset), "total": usage_db.count_usage()}
+
+@app.get("/api/admin/stats")
+def admin_stats(request: Request):
+    if not _admin_ok(request):
+        return JSONResponse({"error": "unauthorized"}, status_code=401)
+    return usage_db.get_stats()
 
 # --- 啟動與診斷日誌 (用於 Cloud Run) ---
 import sys

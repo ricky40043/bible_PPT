@@ -1,6 +1,10 @@
 services:
   app:
     build: .
+    env_file:
+      - .env
     ports:
       - "20100:8080"
     restart: unless-stopped
+    volumes:
+      - ./data:/app/data
