@@ -26,36 +26,31 @@ BIBLE_CHAPTERS = {
 def get_bible_chapter(version: str, book: str, chapter: int) -> List[Dict]:
     version_id = BIBLE_VERSIONS.get(version.upper(), "46")
     url = f"https://www.bible.com/bible/{version_id}/{book}.{chapter}.{version.upper()}"
-    headers = {"User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7)"}
+    headers = {"User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36"}
     res = requests.get(url, headers=headers)
     
     if res.status_code != 200:
         raise Exception(f"Failed to fetch {url}, status code {res.status_code}")
         
     soup = BeautifulSoup(res.text, "lxml")
-    next_data = soup.find("script", id="__NEXT_DATA__")
-    if not next_data:
-        raise Exception("Could not find __NEXT_DATA__ in HTML")
-        
-    data = json.loads(next_data.string)
-    content_html = data.get("props", {}).get("pageProps", {}).get("chapterInfo", {}).get("content", "")
     
-    content_soup = BeautifulSoup(content_html, "lxml")
-    
-    # 移除所有註解與導覽標籤，避免文字污染
-    for note in content_soup.find_all(class_=lambda x: x and ("note" in x or "label" in x)):
+    # 移除所有註解、標題與導覽標籤，避免數字或小標題污染經文內容
+    for note in soup.find_all(class_=lambda x: x and ("note" in x or "label" in x or "heading" in x or "ft" in x or "fk" in x or "yiy" in x)):
         note.decompose()
 
-    # 找出所有具備 data-usfm 屬性的 span (經文片段)
-    verse_segments = content_soup.find_all("span", attrs={"data-usfm": True})
+    # 找出所有具備 data-usfm 屬性的元素 (經文片段)
+    verse_segments = soup.find_all(attrs={"data-usfm": True})
     
     merged_verses = {}
     
     for seg in verse_segments:
         usfm = seg.get("data-usfm")
-        v_num = usfm.split(".")[-1]
+        parts = usfm.split(".")
+        if len(parts) < 3:
+            continue
+        v_num = parts[2].split("+")[0]
         
-        # 遞迴取得清乾淨後的純文字
+        # 取得清乾淨後的純文字
         text = seg.get_text().strip()
         if not text:
             continue
