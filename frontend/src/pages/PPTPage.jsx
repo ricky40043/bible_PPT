@@ -25,13 +25,19 @@ export default function PPTPage() {
     const fetchOptions = async () => {
       try {
         const vRes = await fetch(`${API}/api/versions`)
+        if (!vRes.ok) throw new Error(`版本載入失敗 (${vRes.status})`)
         const vData = await vRes.json()
+        if (!Array.isArray(vData)) throw new Error('版本 API 回傳格式錯誤')
         setVersions(vData)
+
         const bRes = await fetch(`${API}/api/books`)
+        if (!bRes.ok) throw new Error(`書卷載入失敗 (${bRes.status})`)
         const bData = await bRes.json()
+        if (!Array.isArray(bData)) throw new Error('書卷 API 回傳格式錯誤')
         setBooks(bData)
-      } catch {
-        setError('後端服務未啟動')
+      } catch (err) {
+        console.error('初始化選項失敗:', err)
+        setError(err.message || '後端服務未啟動')
       }
     }
     fetchOptions()
@@ -42,11 +48,19 @@ export default function PPTPage() {
       if (!formData.book) return
       try {
         const res = await fetch(`${API}/api/chapters/${formData.book}`)
+        if (!res.ok) throw new Error(`章數載入失敗 (${res.status})`)
+
         const data = await res.json()
-        setChapters(data.count)
+        const count = Number(data?.count)
+        if (!Number.isInteger(count) || count <= 0) {
+          throw new Error('章數 API 回傳格式錯誤')
+        }
+
+        setChapters(count)
         setFormData(prev => ({ ...prev, chapter: '1' }))
       } catch (err) {
-        console.error(err)
+        console.error('取得章數失敗:', err)
+        setError(err.message || '章數載入失敗')
       }
     }
     getChapters()
@@ -55,13 +69,44 @@ export default function PPTPage() {
   useEffect(() => {
     const getVerseCount = async () => {
       if (!formData.book || !formData.chapter || !formData.version) return
+
       try {
         const res = await fetch(`${API}/api/verses_list/${formData.version}/${formData.book}/${formData.chapter}`)
+
+        if (!res.ok) {
+          let message = `經文載入失敗 (${res.status})`
+          const contentType = res.headers.get('content-type') || ''
+
+          if (contentType.includes('application/json')) {
+            const errorData = await res.json()
+            message = errorData.detail || message
+          }
+
+          throw new Error(message)
+        }
+
         const data = await res.json()
-        setVerseCount(data.length)
-        setFormData(prev => ({ ...prev, verse_start: '1', verse_end: data.length.toString(), includeVersion: formData.version !== 'CUNP' }))
+        if (!Array.isArray(data)) {
+          throw new Error('經文 API 回傳格式錯誤')
+        }
+
+        const count = data.length
+        if (count <= 0) {
+          throw new Error('找不到該章經文')
+        }
+
+        setVerseCount(count)
+        setFormData(prev => ({
+          ...prev,
+          verse_start: '1',
+          verse_end: String(count),
+          includeVersion: prev.version !== 'CUNP',
+        }))
+        setError(null)
       } catch (err) {
-        console.error(err)
+        console.error('取得經文失敗:', err)
+        setVerseCount(0)
+        setError(err.message || '經文載入失敗')
       }
     }
     getVerseCount()
@@ -195,7 +240,7 @@ export default function PPTPage() {
                 </select>
               </div>
             </div>
-            <button className="btn-generate" onClick={handleGenerate} disabled={loading}>
+            <button className="btn-generate" onClick={handleGenerate} disabled={loading || verseCount <= 0}>
               {loading ? <span className="loader" /> : <Download size={18} />}
               {loading ? '生成中...' : '下載 PPTX'}
             </button>
