@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
 import { useSearchParams } from 'react-router-dom'
-import { BookOpen, Copy, Highlighter } from 'lucide-react'
+import { BookOpen, Copy, Highlighter, ArrowRight } from 'lucide-react'
 import { useAuth, API_BASE } from '../context/AuthContext'
 import HighlightToolbar from '../components/HighlightToolbar'
 import Toast from '../components/Toast'
@@ -57,34 +57,33 @@ export default function ReadingPage() {
   const [versions] = useState(BIBLE_VERSIONS)
   const [books] = useState(BIBLE_BOOKS)
   
-  // 優先順序：URL 參數 > 使用者進度 > localStorage > 預設創世記 1
   const getInitialTarget = () => {
     const urlV = searchParams.get('version')
     const urlB = searchParams.get('book')
     const urlC = searchParams.get('chapter')
+    const urlVerse = searchParams.get('verse')
     if (urlB) {
-      return { version: urlV || 'CUNP', book: urlB, chapter: urlC || '1' }
+      return { version: urlV || 'CUNP', book: urlB, chapter: urlC || '1', verse: urlVerse || '1' }
     }
     if (progress && progress.book) {
-      return { version: progress.version || 'CUNP', book: progress.book, chapter: String(progress.chapter || '1') }
+      return { version: progress.version || 'CUNP', book: progress.book, chapter: String(progress.chapter || '1'), verse: String(progress.verse_num || '1') }
     }
     const local = localStorage.getItem('bible_local_progress')
     if (local) {
       try {
         const p = JSON.parse(local)
-        return { version: p.version || 'CUNP', book: p.book || 'GEN', chapter: String(p.chapter || '1') }
+        return { version: p.version || 'CUNP', book: p.book || 'GEN', chapter: String(p.chapter || '1'), verse: String(p.verse_num || '1') }
       } catch (e) {}
     }
-    return { version: 'CUNP', book: 'GEN', chapter: '1' }
+    return { version: 'CUNP', book: 'GEN', chapter: '1', verse: '1' }
   }
 
-  // selection: 下拉選單當前的挑選狀態
+  // 1. selection: 頂部正在選取的版本、書卷、章、節
   const [selection, setSelection] = useState(getInitialTarget)
-  // activeTarget: 當前畫面上真正載入與閱讀的章節（選到「章」才更新）
+  // 2. activeTarget: 目前已確認跳轉並正在展示的章節
   const [activeTarget, setActiveTarget] = useState(getInitialTarget)
 
   const [chapterContent, setChapterContent] = useState([])
-  const [selectedVerse, setSelectedVerse] = useState('1')
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState(null)
   
@@ -94,8 +93,6 @@ export default function ReadingPage() {
   const [toastMsg, setToastMsg] = useState(null)
   const [toastType, setToastType] = useState('success')
 
-  // DOM 參照，用於連鎖自動跳下一個選項
-  const versionSelectRef = useRef(null)
   const bookSelectRef = useRef(null)
   const chapterSelectRef = useRef(null)
   const verseSelectRef = useRef(null)
@@ -105,7 +102,7 @@ export default function ReadingPage() {
   const touchStartY = useRef(null)
   const isInitialProgressLoaded = useRef(false)
 
-  // 當前選取的書卷總章數
+  // 計算選中書卷的總章數
   const selectedBookInfo = books.find(b => b.id === selection.book)
   const totalChapters = selectedBookInfo?.chapters || 50
 
@@ -117,24 +114,22 @@ export default function ReadingPage() {
     }, 2800)
   }
 
-  // 1. 同步雲端進度（初次）
+  // 同步雲端進度（初次）
   useEffect(() => {
     if (progress && !isInitialProgressLoaded.current && !searchParams.get('book')) {
       isInitialProgressLoaded.current = true
       const loaded = {
         version: progress.version || 'CUNP',
         book: progress.book,
-        chapter: String(progress.chapter),
+        chapter: String(progress.chapter || '1'),
+        verse: String(progress.verse_num || '1')
       }
       setSelection(loaded)
       setActiveTarget(loaded)
-      if (progress.verse_num) {
-        setSelectedVerse(String(progress.verse_num))
-      }
     }
   }, [progress, searchParams])
 
-  // 2. 讀取高亮標註
+  // 讀取高亮標註
   const fetchHighlights = useCallback(async (version, book, chapter) => {
     const localKey = `hl_${version}_${book}_${chapter}`
     let localMap = {}
@@ -164,7 +159,7 @@ export default function ReadingPage() {
     setHighlights(localMap)
   }, [token])
 
-  // 3. 讀取 activeTarget 經文內容（章節選定後才觸發跳轉載入）
+  // 讀取 activeTarget 經文內容（章節選完確定跳轉時才載入）
   useEffect(() => {
     if (!activeTarget.book || !activeTarget.chapter || !activeTarget.version) return
 
@@ -176,7 +171,7 @@ export default function ReadingPage() {
       setLoading(false)
       setError(null)
       fetchHighlights(activeTarget.version, activeTarget.book, activeTarget.chapter)
-      saveProgress(activeTarget.version, activeTarget.book, parseInt(activeTarget.chapter), parseInt(selectedVerse || 1))
+      saveProgress(activeTarget.version, activeTarget.book, parseInt(activeTarget.chapter), parseInt(activeTarget.verse || 1))
       return
     }
 
@@ -198,20 +193,11 @@ export default function ReadingPage() {
         memoryVerseCache.set(cacheKey, data)
         setChapterContent(data)
         fetchHighlights(activeTarget.version, activeTarget.book, activeTarget.chapter)
-        saveProgress(activeTarget.version, activeTarget.book, parseInt(activeTarget.chapter), parseInt(selectedVerse || 1))
-
-        setTimeout(() => {
-          if (selectedVerse && selectedVerse !== '1') {
-            const el = document.getElementById(`verse-${selectedVerse}`)
-            if (el) el.scrollIntoView({ behavior: 'smooth', block: 'center' })
-          } else {
-            contentRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })
-          }
-        }, 100)
+        saveProgress(activeTarget.version, activeTarget.book, parseInt(activeTarget.chapter), parseInt(activeTarget.verse || 1))
       } catch (err) {
         if (err.name !== 'AbortError') {
           console.error(err)
-          setError('載入經文失敗，請檢查網路連線')
+          setError('載入經文失敗')
         }
       } finally {
         setLoading(false)
@@ -225,76 +211,74 @@ export default function ReadingPage() {
     }
   }, [activeTarget, fetchHighlights])
 
-  // ─────────────────────────── 連鎖自動跳下一個選項 ───────────────────────────
+  // ─────────────────────────── 手機/桌面 連鎖選經流程 ───────────────────────────
 
-  // (1) 選擇版本 -> 自動跳往「書卷」選單
+  // 1. 選擇版本 -> 自動跳往下一個「書卷」選單（不滾動頁面、不發動跳轉）
   const handleVersionChange = (e) => {
-    const newVersion = e.target.value
-    setSelection(prev => ({ ...prev, version: newVersion }))
-    // 若當前書卷與章節已齊全，也可直接切換版本
-    setActiveTarget(prev => ({ ...prev, version: newVersion }))
-    // 自動 focus 到書卷
+    const val = e.target.value
+    setSelection(prev => ({ ...prev, version: val }))
     setTimeout(() => {
       bookSelectRef.current?.focus()
     }, 50)
   }
 
-  // (2) 選擇書卷 -> 自動跳往「章」選單，先不跳轉經文
+  // 2. 選擇書卷 -> 自動跳往下一個「章」選單（不滾動頁面、不發動跳轉）
   const handleBookChange = (e) => {
-    const newBook = e.target.value
-    setSelection(prev => ({ ...prev, book: newBook, chapter: '1' }))
-    setSelectedVerse('1')
-    
-    // 自動 focus 到章節選單，引導使用者挑選章數
+    const val = e.target.value
+    setSelection(prev => ({ ...prev, book: val, chapter: '1', verse: '1' }))
     setTimeout(() => {
       chapterSelectRef.current?.focus()
     }, 50)
   }
 
-  // (3) 選擇章 -> 章節選定，正式觸發經文載入與跳轉！並自動跳往「節」
+  // 3. 選擇章 -> 自動跳往下一個「節」選單（不滾動頁面、不發動跳轉）
   const handleChapterChange = (e) => {
-    const newChapter = e.target.value
-    setSelection(prev => ({ ...prev, chapter: newChapter }))
-    setSelectedVerse('1')
-    // 正式跳轉載入經文
-    setActiveTarget({
-      version: selection.version,
-      book: selection.book,
-      chapter: newChapter,
-    })
-    // 自動 focus 到節（若想快速跳節）
+    const val = e.target.value
+    setSelection(prev => ({ ...prev, chapter: val, verse: '1' }))
     setTimeout(() => {
       verseSelectRef.current?.focus()
     }, 50)
   }
 
-  // (4) 選擇節 -> 平滑滾動到該節
-  const handleVerseJump = (e) => {
-    const num = e.target.value
-    setSelectedVerse(num)
-    const el = document.getElementById(`verse-${num}`)
-    if (el) el.scrollIntoView({ behavior: 'smooth', block: 'center' })
-    saveProgress(activeTarget.version, activeTarget.book, parseInt(activeTarget.chapter), parseInt(num))
+  // 4. 選擇節 -> 選完節（或點擊前往）後，正式跳轉並載入經文！
+  const handleVerseChange = (e) => {
+    const val = e.target.value
+    setSelection(prev => ({ ...prev, verse: val }))
+    // 選好節了，立即發動跳轉
+    triggerJump({ ...selection, verse: val })
   }
 
-  // 上一章 / 下一章按鈕操作
+  // 執行跳轉（版本、書卷、章、節全部確認）
+  const triggerJump = (targetObj = selection) => {
+    setActiveTarget({ ...targetObj })
+    saveProgress(targetObj.version, targetObj.book, parseInt(targetObj.chapter), parseInt(targetObj.verse || 1))
+    
+    // 如果有指定節，輕微定位該節
+    if (targetObj.verse && targetObj.verse !== '1') {
+      setTimeout(() => {
+        const el = document.getElementById(`verse-${targetObj.verse}`)
+        if (el) el.scrollIntoView({ behavior: 'smooth', block: 'center' })
+      }, 150)
+    }
+  }
+
+  // 上一章 / 下一章切換
   const handlePrevChapter = () => {
     const prevChap = (parseInt(activeTarget.chapter) - 1).toString()
     if (parseInt(prevChap) >= 1) {
-      const nextTarget = { ...activeTarget, chapter: prevChap }
+      const nextTarget = { ...activeTarget, chapter: prevChap, verse: '1' }
       setSelection(nextTarget)
       setActiveTarget(nextTarget)
-      setSelectedVerse('1')
     }
   }
 
   const handleNextChapter = () => {
+    const activeBookTotal = books.find(b => b.id === activeTarget.book)?.chapters || 50
     const nextChap = (parseInt(activeTarget.chapter) + 1).toString()
-    if (parseInt(nextChap) <= totalChapters) {
-      const nextTarget = { ...activeTarget, chapter: nextChap }
+    if (parseInt(nextChap) <= activeBookTotal) {
+      const nextTarget = { ...activeTarget, chapter: nextChap, verse: '1' }
       setSelection(nextTarget)
       setActiveTarget(nextTarget)
-      setSelectedVerse('1')
     }
   }
 
@@ -358,9 +342,7 @@ export default function ReadingPage() {
           headers: { Authorization: `Bearer ${token}` },
         })
         showToast(`已清除第 ${num} 節標註`)
-      } catch (err) {
-        console.error(err)
-      }
+      } catch (err) {}
     } else {
       showToast(`已清除第 ${num} 節標註`)
     }
@@ -407,6 +389,9 @@ export default function ReadingPage() {
   const currentActiveBookName = books.find(b => b.id === activeTarget.book)?.name || activeTarget.book
   const currentActiveVersionName = versions.find(v => v.id === activeTarget.version)?.name || activeTarget.version
 
+  // 判斷當前 selection 是否與 activeTarget 不同（有未跳轉的選擇）
+  const isSelectionChanged = selection.version !== activeTarget.version || selection.book !== activeTarget.book || selection.chapter !== activeTarget.chapter || selection.verse !== activeTarget.verse
+
   return (
     <div className="reading-page-wrapper" onClick={() => setActiveVerseNum(null)}>
       <Toast message={toastMsg} type={toastType} onClose={() => setToastMsg(null)} />
@@ -421,68 +406,73 @@ export default function ReadingPage() {
               </button>
             )}
           </div>
-          <p>循序選擇版本、書卷、章節後自動跳轉；點擊經文可<b>畫線標註</b>或<b>複製</b></p>
+          <p>依序選好版本、書卷、章、節後直接跳轉；點擊經文可<b>畫線</b>或<b>複製</b></p>
         </div>
 
         {error && <div className="error-msg">{error}</div>}
 
-        {/* 選擇器列（連鎖自動跳轉引導） */}
-        <div className="reading-selector-bar">
-          <div className="reading-select-group">
-            <label>1. 版本</label>
-            <select
-              ref={versionSelectRef}
-              className="form-control"
-              name="version"
-              value={selection.version}
-              onChange={handleVersionChange}
-            >
-              {versions.map(v => <option key={v.id} value={v.id}>{v.name}</option>)}
-            </select>
+        {/* 選擇器列（版本 -> 書卷 -> 章 -> 節 全部選完才跳轉） */}
+        <div className="reading-selector-card">
+          <div className="reading-selector-bar">
+            <div className="reading-select-group">
+              <label>1. 版本</label>
+              <select
+                className="form-control"
+                value={selection.version}
+                onChange={handleVersionChange}
+              >
+                {versions.map(v => <option key={v.id} value={v.id}>{v.name}</option>)}
+              </select>
+            </div>
+
+            <div className="reading-select-group">
+              <label>2. 書卷</label>
+              <select
+                ref={bookSelectRef}
+                className="form-control"
+                value={selection.book}
+                onChange={handleBookChange}
+              >
+                {books.map(b => <option key={b.id} value={b.id}>{b.name}</option>)}
+              </select>
+            </div>
+
+            <div className="reading-select-group reading-select-small">
+              <label>3. 章</label>
+              <select
+                ref={chapterSelectRef}
+                className="form-control"
+                value={selection.chapter}
+                onChange={handleChapterChange}
+              >
+                {Array.from({ length: totalChapters }, (_, i) => i + 1).map(num => (
+                  <option key={num} value={num}>{num}</option>
+                ))}
+              </select>
+            </div>
+
+            <div className="reading-select-group reading-select-small">
+              <label>4. 節 (選完跳轉)</label>
+              <select
+                ref={verseSelectRef}
+                className="form-control"
+                value={selection.verse}
+                onChange={handleVerseChange}
+              >
+                {Array.from({ length: 60 }, (_, i) => i + 1).map(num => (
+                  <option key={num} value={num}>{num}</option>
+                ))}
+              </select>
+            </div>
           </div>
 
-          <div className="reading-select-group">
-            <label>2. 書卷</label>
-            <select
-              ref={bookSelectRef}
-              className="form-control"
-              name="book"
-              value={selection.book}
-              onChange={handleBookChange}
-            >
-              {books.map(b => <option key={b.id} value={b.id}>{b.name}</option>)}
-            </select>
-          </div>
-
-          <div className="reading-select-group reading-select-small">
-            <label>3. 章 (選定跳轉)</label>
-            <select
-              ref={chapterSelectRef}
-              className="form-control"
-              name="chapter"
-              value={selection.chapter}
-              onChange={handleChapterChange}
-            >
-              {Array.from({ length: totalChapters }, (_, i) => i + 1).map(num => (
-                <option key={num} value={num}>{num}</option>
-              ))}
-            </select>
-          </div>
-
-          <div className="reading-select-group reading-select-small">
-            <label>4. 節 (定位)</label>
-            <select
-              ref={verseSelectRef}
-              className="form-control"
-              value={selectedVerse}
-              onChange={handleVerseJump}
-              disabled={chapterContent.length === 0}
-            >
-              {chapterContent.map(v => (
-                <option key={v.num} value={v.num}>{v.num}</option>
-              ))}
-            </select>
-          </div>
+          {/* 前往跳轉按鈕 (選定後也可手動一鍵跳轉) */}
+          {isSelectionChanged && (
+            <button className="jump-now-btn" onClick={() => triggerJump(selection)}>
+              <span>跳轉至 {books.find(b => b.id === selection.book)?.name} {selection.chapter} 章</span>
+              <ArrowRight size={16} />
+            </button>
+          )}
         </div>
 
         {/* 章節導航 */}
@@ -499,7 +489,7 @@ export default function ReadingPage() {
           </span>
           <button
             className="reading-nav-btn"
-            disabled={parseInt(activeTarget.chapter) >= totalChapters}
+            disabled={parseInt(activeTarget.chapter) >= (books.find(b => b.id === activeTarget.book)?.chapters || 50)}
             onClick={handleNextChapter}
           >
             下一章 →
@@ -585,7 +575,7 @@ export default function ReadingPage() {
           </span>
           <button
             className="reading-nav-btn"
-            disabled={parseInt(activeTarget.chapter) >= totalChapters}
+            disabled={parseInt(activeTarget.chapter) >= (books.find(b => b.id === activeTarget.book)?.chapters || 50)}
             onClick={handleNextChapter}
           >
             下一章 →
