@@ -181,6 +181,20 @@
   padding: 0 10px;
 }
 
+.google-auth-section {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+}
+
+.google-btn-wrapper {
+  display: flex;
+  justify-content: center;
+  width: 100%;
+}
+
 .auth-google-btn {
   width: 100%;
   display: flex;

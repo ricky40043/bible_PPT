@@ -142,6 +142,14 @@ def get_verses_list(version: str, book: str, chapter: int, start: Optional[int] 
 def get_bible_stats():
     return bible_db.get_db_stats()
 
+GOOGLE_CLIENT_ID = os.getenv("GOOGLE_CLIENT_ID", "1083945938592-sample.apps.googleusercontent.com")
+
+@app.get("/api/auth/config")
+def get_auth_config():
+    return {
+        "google_client_id": GOOGLE_CLIENT_ID
+    }
+
 # ─────────────────────────── 使用者認證 API ──────────────────────────────
 class RegisterRequest(BaseModel):
     email: str
