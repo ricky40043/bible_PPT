@@ -1,17 +1,22 @@
-from fastapi import FastAPI, HTTPException, WebSocket, WebSocketDisconnect, Request
+from fastapi import FastAPI, HTTPException, WebSocket, WebSocketDisconnect, Request, Depends
 from fastapi.responses import StreamingResponse, FileResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.middleware.cors import CORSMiddleware
 import urllib.parse
 import os
-from pydantic import BaseModel
-from typing import Optional
+import time
+from pydantic import BaseModel, EmailStr
+from typing import Optional, List, Dict, Any
 
 from constants import BIBLE_BOOKS, VERSIONS
 from scraper import get_bible_chapter, get_chapter_count, get_verse_count
+import bible_db
+import user_db
+import usage_db
+import auth
 from ppt_generator import generate_bible_ppt
 
-app = FastAPI(title="Bible PPT Generator")
+app = FastAPI(title="Bible PPT & Reader API")
 
 app.add_middleware(
     CORSMiddleware,
@@ -21,11 +26,13 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# ─────────────────────────── 使用紀錄 DB ──────────────────────────────
-import time
-import usage_db
+# ─────────────────────────── 資料庫初始化 ──────────────────────────────
 DATA_DIR = os.getenv('DATA_DIR', os.path.join(os.path.dirname(os.path.abspath(__file__)), 'data'))
+os.makedirs(DATA_DIR, exist_ok=True)
 usage_db.init_db(os.path.join(DATA_DIR, 'usage.db'))
+bible_db.init_bible_db(os.path.join(DATA_DIR, 'bible.db'))
+user_db.init_user_db(os.path.join(DATA_DIR, 'users.db'))
+
 ADMIN_TOKEN = os.getenv('ADMIN_TOKEN', '')
 
 def client_ip(request: Request):
@@ -43,11 +50,10 @@ def _admin_ok(request: Request):
             got = a[7:]
     return got == ADMIN_TOKEN
 
+# ─────────────────────────── WebSocket 投影同步 ──────────────────────────────
 class ConnectionManager:
     def __init__(self):
-        # { room_id: [websocket1, websocket2, ...] }
         self.active_connections: dict[str, list[WebSocket]] = {}
-        # { room_id: last_sync_payload } — so new clients see the current slide immediately
         self.room_state: dict[str, dict] = {}
 
     async def connect(self, websocket: WebSocket, room_id: str):
@@ -55,7 +61,6 @@ class ConnectionManager:
         if room_id not in self.active_connections:
             self.active_connections[room_id] = []
         self.active_connections[room_id].append(websocket)
-        # Send the current slide to the new client immediately (if any state exists)
         if room_id in self.room_state:
             await websocket.send_json(self.room_state[room_id])
 
@@ -67,7 +72,6 @@ class ConnectionManager:
                 self.room_state.pop(room_id, None)
 
     async def broadcast(self, message: dict, room_id: str):
-        # Cache the latest SYNC so new clients can receive it on connect
         if message.get('type') == 'SYNC':
             self.room_state[room_id] = message
         if room_id in self.active_connections:
@@ -76,6 +80,7 @@ class ConnectionManager:
 
 manager = ConnectionManager()
 
+# ─────────────────────────── 經文讀取 API ──────────────────────────────
 class GenerateRequest(BaseModel):
     version: str
     book: str
@@ -110,16 +115,196 @@ def get_verses_list(version: str, book: str, chapter: int, start: Optional[int] 
     try:
         verses = get_bible_chapter(version, book, chapter)
         if start is not None and end is not None:
-            # 只取範圍內的經文
             return [v for v in verses if v['num'].isdigit() and start <= int(v['num']) <= end]
         return verses
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
+@app.get("/api/bible/stats")
+def get_bible_stats():
+    return bible_db.get_db_stats()
+
+# ─────────────────────────── 使用者認證 API ──────────────────────────────
+class RegisterRequest(BaseModel):
+    email: str
+    username: str
+    password: str
+
+class LoginRequest(BaseModel):
+    email: str
+    password: str
+
+class GoogleLoginRequest(BaseModel):
+    credential: Optional[str] = None
+    email: Optional[str] = None
+    name: Optional[str] = None
+    google_id: Optional[str] = None
+    avatar_url: Optional[str] = None
+
+@app.post("/api/auth/register")
+def register_user(req: RegisterRequest):
+    if not req.email or '@' not in req.email:
+        raise HTTPException(status_code=400, detail="請輸入有效的 Email")
+    if not req.password or len(req.password) < 6:
+        raise HTTPException(status_code=400, detail="密碼長度至少需要 6 個字元")
+    
+    existing = user_db.get_user_by_email(req.email)
+    if existing:
+        raise HTTPException(status_code=400, detail="此 Email 已被註冊")
+        
+    pwd_hash = auth.hash_password(req.password)
+    user = user_db.create_user(
+        email=req.email,
+        username=req.username or req.email.split('@')[0],
+        password_hash=pwd_hash,
+        auth_provider='local'
+    )
+    token = auth.create_access_token(user["id"], user["email"], user["username"])
+    return {"token": token, "user": user}
+
+@app.post("/api/auth/login")
+def login_user(req: LoginRequest):
+    user = user_db.get_user_by_email(req.email)
+    if not user:
+        raise HTTPException(status_code=400, detail="帳號或密碼錯誤")
+        
+    if not user.get("password_hash") or not auth.verify_password(req.password, user["password_hash"]):
+        raise HTTPException(status_code=400, detail="帳號或密碼錯誤")
+        
+    token = auth.create_access_token(user["id"], user["email"], user["username"])
+    return {
+        "token": token,
+        "user": {
+            "id": user["id"],
+            "email": user["email"],
+            "username": user["username"],
+            "avatar_url": user.get("avatar_url", ""),
+            "auth_provider": user.get("auth_provider", "local")
+        }
+    }
+
+@app.post("/api/auth/google")
+def google_auth(req: GoogleLoginRequest):
+    email = req.email
+    name = req.name or ""
+    google_id = req.google_id or ""
+    avatar_url = req.avatar_url or ""
+    
+    if req.credential:
+        verified = auth.verify_google_id_token(req.credential)
+        if verified:
+            email = verified.get("email") or email
+            name = verified.get("name") or name
+            google_id = verified.get("google_id") or google_id
+            avatar_url = verified.get("avatar_url") or avatar_url
+            
+    if not email:
+        raise HTTPException(status_code=400, detail="Google 認證失敗，未能取得信箱")
+        
+    user = user_db.get_or_create_google_user(
+        email=email,
+        name=name or email.split('@')[0],
+        google_id=google_id,
+        avatar_url=avatar_url
+    )
+    token = auth.create_access_token(user["id"], user["email"], user["username"])
+    return {
+        "token": token,
+        "user": {
+            "id": user["id"],
+            "email": user["email"],
+            "username": user["username"],
+            "avatar_url": user.get("avatar_url", ""),
+            "auth_provider": "google"
+        }
+    }
+
+@app.get("/api/auth/me")
+def get_me(user: Dict = Depends(auth.get_current_user)):
+    progress = user_db.get_user_progress(user["id"])
+    return {
+        "user": {
+            "id": user["id"],
+            "email": user["email"],
+            "username": user["username"],
+            "avatar_url": user.get("avatar_url", ""),
+            "auth_provider": user.get("auth_provider", "local")
+        },
+        "progress": progress
+    }
+
+# ─────────────────────────── 讀經進度 API ──────────────────────────────
+class ProgressRequest(BaseModel):
+    version: str
+    book: str
+    chapter: int
+    verse_num: Optional[int] = 1
+
+@app.get("/api/progress")
+def get_progress(user: Dict = Depends(auth.get_current_user)):
+    progress = user_db.get_user_progress(user["id"])
+    return {"progress": progress}
+
+@app.post("/api/progress")
+def update_progress(req: ProgressRequest, user: Dict = Depends(auth.get_current_user)):
+    result = user_db.save_user_progress(
+        user_id=user["id"],
+        version=req.version,
+        book=req.book,
+        chapter=req.chapter,
+        verse_num=req.verse_num or 1
+    )
+    return {"status": "ok", "progress": result}
+
+# ─────────────────────────── 經文畫線標註 (Highlight) API ──────────────────────────────
+class HighlightRequest(BaseModel):
+    version: str
+    book: str
+    chapter: int
+    verse_num: int
+    color: str # 例如 '#fef08a'
+    note: Optional[str] = ''
+
+@app.get("/api/highlights")
+def get_chapter_highlights(
+    version: str, book: str, chapter: int,
+    user: Optional[Dict] = Depends(auth.get_current_user_optional)
+):
+    if not user:
+        return {"highlights": []}
+    items = user_db.get_chapter_highlights(user["id"], version, book, chapter)
+    return {"highlights": items}
+
+@app.post("/api/highlights")
+def add_or_update_highlight(req: HighlightRequest, user: Dict = Depends(auth.get_current_user)):
+    res = user_db.save_highlight(
+        user_id=user["id"],
+        version=req.version,
+        book=req.book,
+        chapter=req.chapter,
+        verse_num=req.verse_num,
+        color=req.color,
+        note=req.note or ''
+    )
+    return {"status": "ok", "highlight": res}
+
+@app.delete("/api/highlights")
+def delete_highlight(
+    version: str, book: str, chapter: int, verse_num: int,
+    user: Dict = Depends(auth.get_current_user)
+):
+    success = user_db.remove_highlight(user["id"], version, book, chapter, verse_num)
+    return {"status": "ok" if success else "not_found"}
+
+@app.get("/api/highlights/all")
+def get_all_highlights(user: Dict = Depends(auth.get_current_user)):
+    items = user_db.get_all_user_highlights(user["id"])
+    return {"highlights": items}
+
+# ─────────────────────────── 經文 PPT 產出與 WebSocket ──────────────────────────────
 @app.websocket("/ws/{room_id}")
 async def websocket_endpoint(websocket: WebSocket, room_id: str):
     await manager.connect(websocket, room_id)
-    # 記錄投影連線（誰連進投影房間，含 IP）
     ws_ip = (websocket.headers.get('cf-connecting-ip')
              or websocket.headers.get('x-forwarded-for', '').split(',')[0].strip()
              or (websocket.client.host if websocket.client else ''))
@@ -146,7 +331,6 @@ def generate_ppt(req: GenerateRequest, request: Request):
         if not verses:
             raise HTTPException(status_code=404, detail="No verses found")
 
-        # 取得完整版本名稱 (包含 ID)
         version_obj = next((v for v in VERSIONS if v["id"] == req.version), {"name": req.version, "id": req.version})
         full_version_id_name = f"{version_obj['name']}{version_obj['id']}"
 
@@ -157,7 +341,6 @@ def generate_ppt(req: GenerateRequest, request: Request):
             include_version=req.include_version
         )
 
-        # 建立簡潔的輸出檔名，與標題一致
         if req.verse_start and req.verse_end:
             range_str = f"{req.verse_start}-{req.verse_end}"
         elif req.verse_start:
@@ -190,8 +373,7 @@ def generate_ppt(req: GenerateRequest, request: Request):
             duration_ms=(time.time()-t0)*1000, user_agent=request.headers.get('user-agent', ''))
         raise HTTPException(status_code=500, detail=str(e))
 
-# ─────────────────────────── 後台：使用紀錄 ────────────────────────────
-# 必須在前端 catch-all 路由之前註冊，否則會被 /{full_path} 吃掉。
+# ─────────────────────────── 後台管理 ────────────────────────────
 @app.get("/admin")
 def admin_page():
     return FileResponse(os.path.join(os.path.dirname(os.path.abspath(__file__)), "admin.html"))
@@ -206,57 +388,35 @@ def admin_usage(request: Request, limit: int = 100, offset: int = 0):
 def admin_stats(request: Request):
     if not _admin_ok(request):
         return JSONResponse({"error": "unauthorized"}, status_code=401)
-    return usage_db.get_stats()
+    stats = usage_db.get_stats()
+    stats["bible_db"] = bible_db.get_db_stats()
+    return stats
 
-# --- 啟動與診斷日誌 (用於 Cloud Run) ---
-import sys
-print(f"Python version: {sys.version}")
-print(f"Current working directory: {os.getcwd()}")
-
-# 修正：確保我們能找到前端編譯產物
+# ─────────────────────────── 靜態前端資源託管 ────────────────────────────
 base_dir = os.path.dirname(os.path.abspath(__file__))
-# 考慮到 Dockerfile 映射路徑，檢查 /app/frontend/dist
 frontend_path = os.path.join(base_dir, "frontend", "dist")
 
 if not os.path.exists(frontend_path):
-    # 最後嘗試檢查當前目錄下的 frontend/dist
     frontend_path = os.path.join(os.getcwd(), "frontend", "dist")
 
-print(f"Targeting frontend path: {frontend_path}")
-
 if os.path.exists(frontend_path):
-    print(">>> 成功定位前端資源，正在掛載靜態路由...")
-    # 掛載資產目錄 (Vite 編譯後的 assets)
     assets_dir = os.path.join(frontend_path, "assets")
     if os.path.exists(assets_dir):
         app.mount("/assets", StaticFiles(directory=assets_dir), name="assets")
-        print(f"Mounted /assets from {assets_dir}")
 
-    # 退回路由：確保 React Router 的所有路徑都能正確載入 index.html
     @app.get("/{full_path:path}")
     async def serve_frontend(full_path: str, request: Request):
-        # 排除 API 與 WebSocket 請求
         if full_path.startswith("api") or full_path.startswith("ws"):
             return None
-
-        # admin-bible 子網域：任何路徑都顯示後台
         if request.headers.get('host', '').startswith('admin'):
             return FileResponse(os.path.join(os.path.dirname(os.path.abspath(__file__)), "admin.html"))
-
         file_path = os.path.join(frontend_path, full_path)
         if os.path.isfile(file_path):
             return FileResponse(file_path)
-
-        # 預設返回 index.html (SPA)
         return FileResponse(os.path.join(frontend_path, "index.html"))
-    print(">>> 前端託管配置完成。")
-else:
-    print(">>> 警告: 未能找到前端靜態目錄。")
 
-# 注意：Cloud Run 偏好直接透過環境變數 PORT 監聽，這裏設為內建啟動模式
 if __name__ == "__main__":
     import uvicorn
-    # 直接讀取容器提供的 PORT
-    port = int(os.environ.get("PORT", 8080))
+    port = int(os.environ.get("PORT", 5001))
     print(f">>> 伺服器啟動中，監聽埠號: {port}")
-    uvicorn.run("main:app", host="0.0.0.0", port=port)
+    uvicorn.run("main:app", host="0.0.0.0", port=port, reload=True)

@@ -1,8 +1,10 @@
 import requests
-import json
+import time
+import random
 from bs4 import BeautifulSoup
-from typing import List, Dict
+from typing import List, Dict, Optional
 from opencc import OpenCC
+import bible_db
 
 BIBLE_VERSIONS = {
     "CUNP": "46",
@@ -10,80 +12,93 @@ BIBLE_VERSIONS = {
     "CCB": "36"
 }
 
-# 每卷書的總章數清單 (USFM ID: 總章數)
-BIBLE_CHAPTERS = {
-    "GEN": 50, "EXO": 40, "LEV": 27, "NUM": 36, "DEU": 34, "JOS": 24, "JDG": 21, "RUT": 4,
-    "1SA": 31, "2SA": 24, "1KI": 22, "2KI": 25, "1CH": 29, "2CH": 36, "EZR": 10, "NEH": 13,
-    "EST": 10, "JOB": 42, "PSA": 150, "PRO": 31, "ECC": 12, "SNG": 8, "ISA": 66, "JER": 52,
-    "LAM": 5, "EZK": 48, "DAN": 12, "HOS": 14, "JOL": 3, "AMO": 9, "OBA": 1, "JON": 4,
-    "MIC": 7, "NAM": 3, "HAB": 3, "ZEP": 3, "HAG": 2, "ZEC": 14, "MAL": 4, "MAT": 28,
-    "MRK": 16, "LUK": 24, "JHN": 21, "ACT": 28, "ROM": 16, "1CO": 16, "2CO": 13, "GAL": 6,
-    "EPH": 6, "PHP": 4, "COL": 4, "1TH": 5, "2TH": 3, "1TI": 6, "2TI": 4, "TIT": 3,
-    "PHM": 1, "HEB": 13, "JAS": 5, "1PE": 5, "2PE": 3, "1JN": 5, "2JN": 1, "3JN": 1,
-    "JUD": 1, "REV": 22
-}
+_converter = OpenCC('s2t')
 
-def get_bible_chapter(version: str, book: str, chapter: int) -> List[Dict]:
+def fetch_bible_chapter_from_web(version: str, book: str, chapter: int, retries: int = 3) -> List[Dict]:
+    """從 Bible.com 即時爬取單一章節經文"""
     version_id = BIBLE_VERSIONS.get(version.upper(), "46")
     url = f"https://www.bible.com/bible/{version_id}/{book}.{chapter}.{version.upper()}"
-    headers = {"User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36"}
-    res = requests.get(url, headers=headers)
+    headers = {
+        "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+        "Accept-Language": "zh-TW,zh;q=0.9,en-US;q=0.8,en;q=0.7",
+    }
     
-    if res.status_code != 200:
-        raise Exception(f"Failed to fetch {url}, status code {res.status_code}")
-        
-    soup = BeautifulSoup(res.text, "lxml")
-    
-    # 移除所有註解、標題與導覽標籤，避免數字或小標題污染經文內容
-    for note in soup.find_all(class_=lambda x: x and ("note" in x or "label" in x or "heading" in x or "ft" in x or "fk" in x or "yiy" in x)):
-        note.decompose()
+    last_err = None
+    for attempt in range(retries):
+        try:
+            res = requests.get(url, headers=headers, timeout=12)
+            if res.status_code == 200:
+                soup = BeautifulSoup(res.text, "lxml")
+                
+                # 移除所有註解、標題與導覽標籤，避免數字或小標題污染經文內容
+                for note in soup.find_all(class_=lambda x: x and ("note" in x or "label" in x or "heading" in x or "ft" in x or "fk" in x or "yiy" in x)):
+                    note.decompose()
 
-    # 找出所有具備 data-usfm 屬性的元素 (經文片段)
-    verse_segments = soup.find_all(attrs={"data-usfm": True})
-    
-    merged_verses = {}
-    
-    for seg in verse_segments:
-        usfm = seg.get("data-usfm")
-        parts = usfm.split(".")
-        if len(parts) < 3:
-            continue
-        v_num = parts[2].split("+")[0]
-        
-        # 取得清乾淨後的純文字
-        text = seg.get_text().strip()
-        if not text:
-            continue
-            
-        if v_num not in merged_verses:
-            merged_verses[v_num] = text
-        else:
-            # 如果該節已經存在，則直接拼接（自動處理跨段落問題）
-            merged_verses[v_num] += text
+                # 找出所有具備 data-usfm 屬性的元素 (經文片段)
+                verse_segments = soup.find_all(attrs={"data-usfm": True})
+                merged_verses = {}
+                
+                for seg in verse_segments:
+                    usfm = seg.get("data-usfm")
+                    parts = usfm.split(".")
+                    if len(parts) < 3:
+                        continue
+                    v_num = parts[2].split("+")[0]
+                    
+                    text = seg.get_text().strip()
+                    if not text:
+                        continue
+                        
+                    if v_num not in merged_verses:
+                        merged_verses[v_num] = text
+                    else:
+                        merged_verses[v_num] += text
 
-    # 轉換回原本的列表格式
-    converter = OpenCC('s2t')
-    results = []
-    for num, text in merged_verses.items():
-        results.append({
-            "num": num,
-            "text": converter.convert(text)
-        })
+                results = []
+                for num, text in merged_verses.items():
+                    results.append({
+                        "num": num,
+                        "text": _converter.convert(text)
+                    })
+                        
+                results.sort(key=lambda x: int(x['num']) if x['num'].isdigit() else 999)
+                return results
+            else:
+                last_err = Exception(f"HTTP {res.status_code} for {url}")
+        except Exception as e:
+            last_err = e
             
-    # 按節數排序
-    results.sort(key=lambda x: int(x['num']) if x['num'].isdigit() else 999)
-    return results
+        time.sleep(1 + attempt * 1.5 + random.random())
+        
+    raise last_err or Exception(f"Failed to fetch {url}")
+
+def get_bible_chapter(version: str, book: str, chapter: int) -> List[Dict]:
+    """
+    獲取經文首選從本地資料庫讀取；
+    若本地尚無，則即時爬取並寫入資料庫緩存。
+    """
+    cached = bible_db.get_bible_chapter(version, book, chapter)
+    if cached:
+        return cached
+    
+    # 本地無資料，嘗試從網路爬取並存庫
+    verses = fetch_bible_chapter_from_web(version, book, chapter)
+    if verses:
+        bible_db.save_chapter_verses(version, book, chapter, verses)
+    return verses
 
 def get_chapter_count(book: str) -> int:
-    """取得特定書卷的總章數。"""
-    return BIBLE_CHAPTERS.get(book.upper(), 50)
+    return bible_db.get_chapter_count(book)
 
 def get_verse_count(version: str, book: str, chapter: int) -> int:
-    """取得特定章節的總節數。"""
+    # 優先查資料庫
+    count = bible_db.get_verse_count(version, book, chapter)
+    if count > 0:
+        return count
+    # 查無則載入該章
     verses = get_bible_chapter(version, book, chapter)
     if not verses:
         return 0
-    # 取得最後一節的數字
     try:
         return int(verses[-1]['num'])
     except (ValueError, IndexError):

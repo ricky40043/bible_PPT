@@ -1,5 +1,7 @@
 import { BrowserRouter, Routes, Route, useLocation } from 'react-router-dom'
+import { AuthProvider } from './context/AuthContext'
 import NavBar from './components/NavBar'
+import AuthModal from './components/AuthModal'
 import PPTPage from './pages/PPTPage'
 import ProjectionPage from './pages/ProjectionPage'
 import ReadingPage from './pages/ReadingPage'
@@ -26,6 +28,7 @@ function AppContent() {
           <Route path="/reading" element={<ReadingPage />} />
         </Routes>
       </main>
+      <AuthModal />
     </div>
   )
 }
@@ -33,7 +36,9 @@ function AppContent() {
 function App() {
   return (
     <BrowserRouter>
-      <AppContent />
+      <AuthProvider>
+        <AppContent />
+      </AuthProvider>
     </BrowserRouter>
   )
 }

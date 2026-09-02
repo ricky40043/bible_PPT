@@ -2,6 +2,37 @@
   display: flex;
   justify-content: center;
   align-items: flex-start;
+  min-height: calc(100vh - 80px);
+  padding-bottom: 2rem;
+}
+
+.header-title-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 4px;
+}
+
+.copy-all-btn {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  color: #94a3b8;
+  padding: 6px 14px;
+  border-radius: 8px;
+  font-size: 0.85rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.copy-all-btn:hover {
+  background: rgba(59, 130, 246, 0.2);
+  border-color: #3b82f6;
+  color: #60a5fa;
+  transform: translateY(-1px);
 }
 
 /* Selector Bar */
@@ -26,7 +57,7 @@
 }
 
 .reading-select-small {
-  flex: 0 0 90px;
+  flex: 0 0 110px;
 }
 
 /* Chapter Navigation (top and bottom) */
@@ -35,11 +66,12 @@
   align-items: center;
   justify-content: space-between;
   gap: 1rem;
-  padding: 0.75rem 1rem;
-  background: rgba(15, 23, 42, 0.4);
-  border-radius: 12px;
+  padding: 0.75rem 1.25rem;
+  background: rgba(15, 23, 42, 0.6);
+  backdrop-filter: blur(8px);
+  border-radius: 14px;
   margin-bottom: 1.5rem;
-  border: 1px solid rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.08);
 }
 
 .reading-chapter-nav-bottom {
@@ -48,9 +80,10 @@
 }
 
 .reading-chapter-title {
-  font-size: 1rem;
+  font-size: 1.05rem;
   font-weight: 600;
   color: #e2e8f0;
+  letter-spacing: 0.03em;
 }
 
 .reading-nav-btn {
@@ -58,15 +91,18 @@
   color: #60a5fa;
   border: 1px solid rgba(96, 165, 250, 0.3);
   border-radius: 8px;
-  padding: 0.4rem 0.9rem;
-  font-size: 0.85rem;
+  padding: 0.45rem 1.1rem;
+  font-size: 0.88rem;
+  font-weight: 500;
   cursor: pointer;
   transition: all 0.2s;
+  white-space: nowrap;
 }
 
 .reading-nav-btn:hover:not(:disabled) {
   background: rgba(59, 130, 246, 0.15);
   border-color: #60a5fa;
+  transform: translateY(-1px);
 }
 
 .reading-nav-btn:disabled {
@@ -76,11 +112,13 @@
 
 /* Content Area */
 .reading-content {
-  background: rgba(15, 23, 42, 0.35);
+  background: rgba(15, 23, 42, 0.45);
+  backdrop-filter: blur(12px);
   border-radius: 20px;
-  border: 1px solid rgba(255, 255, 255, 0.07);
-  padding: 1.5rem 2rem;
-  min-height: 300px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  padding: 1.8rem 2.2rem;
+  min-height: 350px;
+  box-shadow: 0 15px 35px rgba(0, 0, 0, 0.3);
 }
 
 .reading-loading {
@@ -88,80 +126,120 @@
   align-items: center;
   justify-content: center;
   gap: 1rem;
-  padding: 3rem;
+  padding: 4rem;
   color: #94a3b8;
 }
 
 .reading-empty {
   text-align: center;
-  padding: 3rem;
-  color: #475569;
-  font-size: 1rem;
+  padding: 4rem;
+  color: #64748b;
+  font-size: 1.05rem;
 }
 
 .reading-header-bar {
   display: flex;
-  align-items: baseline;
+  align-items: center;
   justify-content: space-between;
   margin-bottom: 1.5rem;
   padding-bottom: 1rem;
   border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.reading-title-wrap {
+  display: flex;
+  align-items: baseline;
+  gap: 12px;
 }
 
 .reading-book-title {
-  font-size: 1.4rem;
+  font-size: 1.45rem;
   font-weight: 700;
   color: #f8fafc;
 }
 
 .reading-version-tag {
   font-size: 0.8rem;
+  font-weight: 600;
   color: #60a5fa;
   background: rgba(59, 130, 246, 0.15);
-  padding: 0.2rem 0.6rem;
+  border: 1px solid rgba(59, 130, 246, 0.25);
+  padding: 0.2rem 0.65rem;
   border-radius: 6px;
+}
+
+.reading-tips {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 0.8rem;
+  color: #94a3b8;
 }
 
 /* Verses */
 .reading-verses {
   display: flex;
   flex-direction: column;
-  gap: 0.1rem;
+  gap: 0.35rem;
 }
 
 .verse-item {
+  position: relative;
   display: flex;
-  gap: 0.75rem;
-  padding: 0.6rem 0.5rem;
-  border-radius: 8px;
-  transition: background 0.15s;
+  gap: 0.85rem;
+  padding: 0.65rem 0.85rem;
+  border-radius: 10px;
+  transition: all 0.15s ease;
   align-items: baseline;
+  cursor: pointer;
+  user-select: text;
 }
 
 .verse-item:hover {
-  background: rgba(59, 130, 246, 0.06);
+  background: rgba(255, 255, 255, 0.04);
+}
+
+.verse-item.active-toolbar-verse {
+  background: rgba(59, 130, 246, 0.1) !important;
+  box-shadow: 0 0 0 1px rgba(59, 130, 246, 0.3);
+}
+
+/* 高亮畫線樣式 */
+.verse-item.highlighted {
+  background: var(--hl-bg, rgba(254, 240, 138, 0.25));
+  border-left: 3px solid rgba(0, 0, 0, 0.4);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+}
+
+.verse-item.highlighted .verse-text {
+  color: #111827;
+  font-weight: 500;
+}
+
+.verse-item.highlighted .verse-num {
+  color: #374151;
+  font-weight: 800;
 }
 
 .verse-num {
-  font-size: 0.75rem;
+  font-size: 0.8rem;
   font-weight: 700;
   color: #60a5fa;
   min-width: 24px;
   text-align: right;
   flex-shrink: 0;
   margin-top: 0.2rem;
+  user-select: none;
 }
 
 .verse-text {
-  font-size: 1.05rem;
+  font-size: 1.08rem;
   color: #e2e8f0;
-  line-height: 1.7;
-  font-family: "PingFang TC", "Noto Sans TC", "Microsoft JhengHei", sans-serif;
-}
-
-/* Fix chapter nav button text wrapping */
-.reading-nav-btn {
-  white-space: nowrap;
+  line-height: 1.8;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "PingFang TC", "Noto Sans TC", "Microsoft JhengHei", sans-serif;
+  letter-spacing: 0.02em;
 }
 
 @media (max-width: 600px) {
@@ -170,25 +248,14 @@
     grid-template-columns: 1fr 1fr;
     gap: 0.75rem;
   }
-  /* 版本 & 書卷 on row 1, 章 & 節 on row 2 */
   .reading-select-group:nth-child(1) { grid-column: 1; grid-row: 1; }
   .reading-select-group:nth-child(2) { grid-column: 2; grid-row: 1; }
   .reading-select-group.reading-select-small:nth-child(3) { grid-column: 1; grid-row: 2; flex: unset; }
   .reading-select-group.reading-select-small:nth-child(4) { grid-column: 2; grid-row: 2; flex: unset; }
-  .form-control {
-    text-overflow: ellipsis;
-    white-space: nowrap;
-    overflow: hidden;
-    padding: 0.75rem 0.5rem;
-    font-size: 0.9rem;
-  }
   .reading-content {
-    padding: 1rem;
+    padding: 1.2rem;
   }
   .verse-text {
-    font-size: 1rem;
-  }
-  .reading-chapter-nav {
-    flex-wrap: nowrap;
+    font-size: 1.02rem;
   }
 }

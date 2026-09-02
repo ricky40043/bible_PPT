@@ -6,3 +6,7 @@ requests
 websockets
 lxml
 opencc-python-reimplemented
+pyjwt
+bcrypt
+passlib
+google-auth
