@@ -1,21 +1,65 @@
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useRef, useCallback } from 'react'
 import { useSearchParams } from 'react-router-dom'
-import { BookOpen, Copy, Check, Highlighter, Sparkles } from 'lucide-react'
+import { BookOpen, Copy, Highlighter } from 'lucide-react'
 import { useAuth, API_BASE } from '../context/AuthContext'
 import HighlightToolbar from '../components/HighlightToolbar'
 import Toast from '../components/Toast'
 import './ReadingPage.css'
 
+export const BIBLE_BOOKS = [
+  { id: "GEN", name: "創世記", chapters: 50 }, { id: "EXO", name: "出埃及記", chapters: 40 },
+  { id: "LEV", name: "利未記", chapters: 27 }, { id: "NUM", name: "民數記", chapters: 36 },
+  { id: "DEU", name: "申命記", chapters: 34 }, { id: "JOS", name: "約書亞記", chapters: 24 },
+  { id: "JDG", name: "士師記", chapters: 21 }, { id: "RUT", name: "路得記", chapters: 4 },
+  { id: "1SA", name: "撒母耳記上", chapters: 31 }, { id: "2SA", name: "撒母耳記下", chapters: 24 },
+  { id: "1KI", name: "列王紀上", chapters: 22 }, { id: "2KI", name: "列王紀下", chapters: 25 },
+  { id: "1CH", name: "歷代志上", chapters: 29 }, { id: "2CH", name: "歷代志下", chapters: 36 },
+  { id: "EZR", name: "以斯拉記", chapters: 10 }, { id: "NEH", name: "尼希米記", chapters: 13 },
+  { id: "EST", name: "以斯帖記", chapters: 10 }, { id: "JOB", name: "約伯記", chapters: 42 },
+  { id: "PSA", name: "詩篇", chapters: 150 }, { id: "PRO", name: "箴言", chapters: 31 },
+  { id: "ECC", name: "傳道書", chapters: 12 }, { id: "SNG", "name": "雅歌", chapters: 8 },
+  { id: "ISA", name: "以賽亞書", chapters: 66 }, { id: "JER", name: "耶利米書", chapters: 52 },
+  { id: "LAM", name: "耶利米哀歌", chapters: 5 }, { id: "EZK", name: "以西結書", chapters: 48 },
+  { id: "DAN", name: "但以理書", chapters: 12 }, { id: "HOS", name: "何西阿書", chapters: 14 },
+  { id: "JOL", name: "約珥書", chapters: 3 }, { id: "AMO", name: "阿摩司書", chapters: 9 },
+  { id: "OBA", name: "俄巴底亞書", chapters: 1 }, { id: "JON", name: "約拿書", chapters: 4 },
+  { id: "MIC", name: "彌迦書", chapters: 7 }, { id: "NAM", name: "那鴻書", chapters: 3 },
+  { id: "HAB", name: "哈巴谷書", chapters: 3 }, { id: "ZEP", name: "西番雅書", chapters: 3 },
+  { id: "HAG", name: "哈該書", chapters: 2 }, { id: "ZEC", name: "撒迦利亞書", chapters: 14 },
+  { id: "MAL", name: "瑪拉基書", chapters: 4 }, { id: "MAT", name: "馬太福音", chapters: 28 },
+  { id: "MRK", name: "馬可福音", chapters: 16 }, { id: "LUK", name: "路加福音", chapters: 24 },
+  { id: "JHN", name: "約翰福音", chapters: 21 }, { id: "ACT", name: "使徒行傳", chapters: 28 },
+  { id: "ROM", name: "羅馬書", chapters: 16 }, { id: "1CO", name: "哥林多前書", chapters: 16 },
+  { id: "2CO", name: "哥林多後書", chapters: 13 }, { id: "GAL", name: "加拉太書", chapters: 6 },
+  { id: "EPH", name: "以弗所書", chapters: 6 }, { id: "PHP", name: "腓立比書", chapters: 4 },
+  { id: "COL", name: "歌羅西書", chapters: 4 }, { id: "1TH", name: "帖撒羅尼迦前書", chapters: 5 },
+  { id: "2TH", name: "帖撒羅尼迦後書", chapters: 3 }, { id: "1TI", name: "提摩太前書", chapters: 6 },
+  { id: "2TI", name: "提摩太後書", chapters: 4 }, { id: "TIT", name: "提多書", chapters: 3 },
+  { id: "PHM", name: "腓利門書", chapters: 1 }, { id: "HEB", name: "希伯來書", chapters: 13 },
+  { id: "JAS", name: "雅各書", chapters: 5 }, { id: "1PE", name: "彼得前書", chapters: 5 },
+  { id: "2PE", name: "彼得後書", chapters: 3 }, { id: "1JN", name: "約翰一書", chapters: 5 },
+  { id: "2JN", name: "約翰二書", chapters: 1 }, { id: "3JN", name: "約翰三書", chapters: 1 },
+  { id: "JUD", name: "猶大書", chapters: 1 }, { id: "REV", name: "啟示錄", chapters: 22 }
+]
+
+export const BIBLE_VERSIONS = [
+  { id: "CUNP", name: "新標點和合本" },
+  { id: "RCUV", name: "和合本修訂版" },
+  { id: "CCB", name: "當代譯本" }
+]
+
+// 前端記憶體快取，秒速響應
+const memoryVerseCache = new Map()
+
 export default function ReadingPage() {
   const [searchParams] = useSearchParams()
   const { user, token, progress, saveProgress } = useAuth()
 
-  const [versions, setVersions] = useState([])
-  const [books, setBooks] = useState([])
-  const [chapters, setChapters] = useState(50)
+  const [versions, setVersions] = useState(BIBLE_VERSIONS)
+  const [books, setBooks] = useState(BIBLE_BOOKS)
   
   // 優先順序：URL 參數 > 使用者進度 > localStorage > 預設創世記 1
-  const initialParams = () => {
+  const getInitialState = () => {
     const urlV = searchParams.get('version')
     const urlB = searchParams.get('book')
     const urlC = searchParams.get('chapter')
@@ -35,15 +79,15 @@ export default function ReadingPage() {
     return { version: 'CUNP', book: 'GEN', chapter: '1' }
   }
 
-  const [formData, setFormData] = useState(initialParams)
+  const [formData, setFormData] = useState(getInitialState)
   const [chapterContent, setChapterContent] = useState([])
   const [selectedVerse, setSelectedVerse] = useState('1')
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState(null)
   
   // 經文標註與操作狀態
-  const [highlights, setHighlights] = useState({}) // { [verse_num]: color_hex }
-  const [activeVerseNum, setActiveVerseNum] = useState(null) // 目前正在編輯工具列的節
+  const [highlights, setHighlights] = useState({})
+  const [activeVerseNum, setActiveVerseNum] = useState(null)
   const [toastMsg, setToastMsg] = useState(null)
   const [toastType, setToastType] = useState('success')
 
@@ -51,6 +95,10 @@ export default function ReadingPage() {
   const touchStartX = useRef(null)
   const touchStartY = useRef(null)
   const isInitialProgressLoaded = useRef(false)
+
+  // 計算當前書卷總章數
+  const currentBookInfo = books.find(b => b.id === formData.book)
+  const totalChapters = currentBookInfo?.chapters || 50
 
   const showToast = (msg, type = 'success') => {
     setToastMsg(msg)
@@ -60,22 +108,7 @@ export default function ReadingPage() {
     }, 2800)
   }
 
-  // 1. 取得版本與書卷
-  useEffect(() => {
-    const fetchOptions = async () => {
-      try {
-        const vRes = await fetch(`${API_BASE}/api/versions`)
-        setVersions(await vRes.json())
-        const bRes = await fetch(`${API_BASE}/api/books`)
-        setBooks(await bRes.json())
-      } catch {
-        setError('後端服務連線失敗')
-      }
-    }
-    fetchOptions()
-  }, [])
-
-  // 2. 當使用者登入且有進度時，自動載入
+  // 1. 同步雲端進度（初次）
   useEffect(() => {
     if (progress && !isInitialProgressLoaded.current && !searchParams.get('book')) {
       isInitialProgressLoaded.current = true
@@ -90,59 +123,8 @@ export default function ReadingPage() {
     }
   }, [progress, searchParams])
 
-  // 3. 取得書卷總章數
-  useEffect(() => {
-    const getChapters = async () => {
-      if (!formData.book) return
-      try {
-        const res = await fetch(`${API_BASE}/api/chapters/${formData.book}`)
-        const data = await res.json()
-        setChapters(data.count)
-      } catch (err) {
-        console.error(err)
-      }
-    }
-    getChapters()
-  }, [formData.book])
-
-  // 4. 讀取該章經文內容
-  useEffect(() => {
-    const fetchChapter = async () => {
-      if (!formData.book || !formData.chapter || !formData.version) return
-      setLoading(true)
-      setChapterContent([])
-      setActiveVerseNum(null)
-      try {
-        const res = await fetch(`${API_BASE}/api/verses_list/${formData.version}/${formData.book}/${formData.chapter}`)
-        const data = await res.json()
-        setChapterContent(data)
-
-        // 讀取該章的高亮標註
-        fetchHighlights(formData.version, formData.book, formData.chapter)
-
-        // 自動儲存使用者的讀經進度
-        saveProgress(formData.version, formData.book, parseInt(formData.chapter), parseInt(selectedVerse || 1))
-
-        // 若有指定的節，平滑滾動至該節
-        setTimeout(() => {
-          if (selectedVerse && selectedVerse !== '1') {
-            const el = document.getElementById(`verse-${selectedVerse}`)
-            if (el) el.scrollIntoView({ behavior: 'smooth', block: 'center' })
-          } else {
-            contentRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })
-          }
-        }, 150)
-      } catch {
-        setError('載入經文失敗')
-      }
-      setLoading(false)
-    }
-    fetchChapter()
-  }, [formData.book, formData.chapter, formData.version])
-
-  // 讀取該章高亮標註
-  const fetchHighlights = async (version, book, chapter) => {
-    // 預設先讀 localStorage
+  // 2. 讀取高亮標註
+  const fetchHighlights = useCallback(async (version, book, chapter) => {
     const localKey = `hl_${version}_${book}_${chapter}`
     let localMap = {}
     try {
@@ -169,7 +151,69 @@ export default function ReadingPage() {
       }
     }
     setHighlights(localMap)
-  }
+  }, [token])
+
+  // 3. 讀取該章經文內容（支援快取與 AbortController 防卡頓）
+  useEffect(() => {
+    if (!formData.book || !formData.chapter || !formData.version) return
+
+    const cacheKey = `${formData.version}_${formData.book}_${formData.chapter}`
+    const cachedData = memoryVerseCache.get(cacheKey)
+
+    // 若快取中已有，0 毫秒立即呈現
+    if (cachedData) {
+      setChapterContent(cachedData)
+      setLoading(false)
+      setError(null)
+      fetchHighlights(formData.version, formData.book, formData.chapter)
+      saveProgress(formData.version, formData.book, parseInt(formData.chapter), parseInt(selectedVerse || 1))
+      return
+    }
+
+    const abortCtrl = new AbortController()
+    setLoading(true)
+    setError(null)
+    setActiveVerseNum(null)
+
+    const fetchChapter = async () => {
+      try {
+        const res = await fetch(
+          `${API_BASE}/api/verses_list/${formData.version}/${formData.book}/${formData.chapter}`,
+          { signal: abortCtrl.signal }
+        )
+        if (!res.ok) {
+          throw new Error(`載入失敗 (${res.status})`)
+        }
+        const data = await res.json()
+        memoryVerseCache.set(cacheKey, data)
+        setChapterContent(data)
+        fetchHighlights(formData.version, formData.book, formData.chapter)
+        saveProgress(formData.version, formData.book, parseInt(formData.chapter), parseInt(selectedVerse || 1))
+
+        setTimeout(() => {
+          if (selectedVerse && selectedVerse !== '1') {
+            const el = document.getElementById(`verse-${selectedVerse}`)
+            if (el) el.scrollIntoView({ behavior: 'smooth', block: 'center' })
+          } else {
+            contentRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+          }
+        }, 100)
+      } catch (err) {
+        if (err.name !== 'AbortError') {
+          console.error(err)
+          setError('載入經文失敗，請檢查網路連線')
+        }
+      } finally {
+        setLoading(false)
+      }
+    }
+
+    fetchChapter()
+
+    return () => {
+      abortCtrl.abort()
+    }
+  }, [formData.book, formData.chapter, formData.version, fetchHighlights])
 
   // 儲存/更新標註顏色
   const handleSelectHighlightColor = async (verseNum, color) => {
@@ -177,14 +221,12 @@ export default function ReadingPage() {
     setHighlights(prev => ({ ...prev, [num]: color }))
     setActiveVerseNum(null)
 
-    // 本地備份
     const localKey = `hl_${formData.version}_${formData.book}_${formData.chapter}`
     try {
       const updated = { ...highlights, [num]: color }
       localStorage.setItem(localKey, JSON.stringify(updated))
     } catch (e) {}
 
-    // 若有登入，同步至後端資料庫
     if (token) {
       try {
         await fetch(`${API_BASE}/api/highlights`, {
@@ -220,7 +262,6 @@ export default function ReadingPage() {
     })
     setActiveVerseNum(null)
 
-    // 更新本地
     const localKey = `hl_${formData.version}_${formData.book}_${formData.chapter}`
     try {
       const updated = { ...highlights }
@@ -296,7 +337,7 @@ export default function ReadingPage() {
     touchStartX.current = null
     touchStartY.current = null
     if (Math.abs(dx) < 50 || Math.abs(dx) < Math.abs(dy)) return
-    if (dx < 0 && parseInt(formData.chapter) < chapters) {
+    if (dx < 0 && parseInt(formData.chapter) < totalChapters) {
       setFormData(prev => ({ ...prev, chapter: (parseInt(prev.chapter) + 1).toString() }))
     } else if (dx > 0 && parseInt(formData.chapter) > 1) {
       setFormData(prev => ({ ...prev, chapter: (parseInt(prev.chapter) - 1).toString() }))
@@ -342,7 +383,7 @@ export default function ReadingPage() {
           <div className="reading-select-group reading-select-small">
             <label>章</label>
             <select className="form-control" name="chapter" value={formData.chapter} onChange={handleChange}>
-              {Array.from({ length: chapters }, (_, i) => i + 1).map(num => (
+              {Array.from({ length: totalChapters }, (_, i) => i + 1).map(num => (
                 <option key={num} value={num}>{num}</option>
               ))}
             </select>
@@ -371,7 +412,7 @@ export default function ReadingPage() {
           </span>
           <button
             className="reading-nav-btn"
-            disabled={parseInt(formData.chapter) >= chapters}
+            disabled={parseInt(formData.chapter) >= totalChapters}
             onClick={() => setFormData(prev => ({ ...prev, chapter: (parseInt(prev.chapter) + 1).toString() }))}
           >
             下一章 →
@@ -457,7 +498,7 @@ export default function ReadingPage() {
           </span>
           <button
             className="reading-nav-btn"
-            disabled={parseInt(formData.chapter) >= chapters}
+            disabled={parseInt(formData.chapter) >= totalChapters}
             onClick={() => setFormData(prev => ({ ...prev, chapter: (parseInt(prev.chapter) + 1).toString() }))}
           >
             下一章 →
