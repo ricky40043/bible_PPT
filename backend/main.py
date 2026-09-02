@@ -33,6 +33,24 @@ usage_db.init_db(os.path.join(DATA_DIR, 'usage.db'))
 bible_db.init_bible_db(os.path.join(DATA_DIR, 'bible.db'))
 user_db.init_user_db(os.path.join(DATA_DIR, 'users.db'))
 
+# 檢查資料庫是否已滿 3,567 章，若未滿則在背景自動補齊全量經文
+def _auto_sync_if_needed():
+    try:
+        import threading
+        import download_all_bibles
+        stats = bible_db.get_db_stats()
+        total_chaps = sum(v.get("chapters", 0) for v in stats.values())
+        if total_chaps < 3500:
+            print(f">>> 提示: 資料庫現有 {total_chaps}/3567 章，背景啟動自動補齊下載...")
+            t = threading.Thread(target=download_all_bibles.run_batch_download, kwargs={"max_workers": 6}, daemon=True)
+            t.start()
+        else:
+            print(f">>> 經文資料庫已達全量 ({total_chaps} 章，100% 完整)！")
+    except Exception as e:
+        print(f"[main] auto sync error: {e}")
+
+_auto_sync_if_needed()
+
 ADMIN_TOKEN = os.getenv('ADMIN_TOKEN', '')
 
 def client_ip(request: Request):
