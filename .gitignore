@@ -4,4 +4,16 @@ __pycache__/
 
 .claude/
 .env
-data/
+
+# 忽略動態/使用者/記錄資料庫，僅保留固定聖經經文資料庫 bible.db
+backend/data/*.db
+!backend/data/bible.db
+*.db
+!backend/data/bible.db
+
+# 忽略測試暫存檔
+output.pptx
+test_gen_*.pptx
+test_*.pptx
+
+node_modules/
