@@ -33,7 +33,22 @@ def init_bible_db(path: Optional[str] = None):
     global _db_path
     if path is None:
         data_dir = os.getenv('DATA_DIR', os.path.join(os.path.dirname(os.path.abspath(__file__)), 'data'))
-        path = os.path.join(data_dir, 'bible.db')
+        target_path = os.path.join(data_dir, 'bible.db')
+        
+        # 容器與跨目錄相容性檢查：若預設路徑不存在，搜尋常見候選路徑
+        if not os.path.exists(target_path):
+            candidates = [
+                os.path.join(os.path.dirname(os.path.abspath(__file__)), 'data', 'bible.db'),
+                os.path.join(os.getcwd(), 'data', 'bible.db'),
+                os.path.join(os.getcwd(), 'backend', 'data', 'bible.db'),
+                '/app/data/bible.db',
+                '/app/backend/data/bible.db',
+            ]
+            for candidate in candidates:
+                if os.path.exists(candidate):
+                    target_path = candidate
+                    break
+        path = target_path
     
     _db_path = path
     os.makedirs(os.path.dirname(path), exist_ok=True)
