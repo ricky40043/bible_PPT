@@ -17,7 +17,7 @@ export const BIBLE_BOOKS = [
   { id: "EZR", name: "以斯拉記", chapters: 10 }, { id: "NEH", name: "尼希米記", chapters: 13 },
   { id: "EST", name: "以斯帖記", chapters: 10 }, { id: "JOB", name: "約伯記", chapters: 42 },
   { id: "PSA", name: "詩篇", chapters: 150 }, { id: "PRO", name: "箴言", chapters: 31 },
-  { id: "ECC", name: "傳道書", chapters: 12 }, { id: "SNG", name: "雅歌", chapters: 8 },
+  { id: "ECC", name: "傳道書", chapters: 12 }, { id: "SNG", "name": "雅歌", chapters: 8 },
   { id: "ISA", name: "以賽亞書", chapters: 66 }, { id: "JER", name: "耶利米書", chapters: 52 },
   { id: "LAM", name: "耶利米哀歌", chapters: 5 }, { id: "EZK", name: "以西結書", chapters: 48 },
   { id: "DAN", name: "但以理書", chapters: 12 }, { id: "HOS", name: "何西阿書", chapters: 14 },
@@ -52,7 +52,7 @@ const memoryVerseCache = new Map()
 
 export default function ReadingPage() {
   const [searchParams] = useSearchParams()
-  const { user, token, progress, saveProgress } = useAuth()
+  const { user, token, progress, saveProgress, openAuthModal } = useAuth()
 
   const [versions] = useState(BIBLE_VERSIONS)
   const [books] = useState(BIBLE_BOOKS)
@@ -129,37 +129,31 @@ export default function ReadingPage() {
     }
   }, [progress, searchParams])
 
-  // 讀取高亮標註
+  // 從後端 SQLite 資料庫讀取使用者的畫線筆記
   const fetchHighlights = useCallback(async (version, book, chapter) => {
-    const localKey = `hl_${version}_${book}_${chapter}`
-    let localMap = {}
-    try {
-      const stored = localStorage.getItem(localKey)
-      if (stored) localMap = JSON.parse(stored)
-    } catch (e) {}
-
-    if (token) {
-      try {
-        const res = await fetch(`${API_BASE}/api/highlights?version=${version}&book=${book}&chapter=${chapter}`, {
-          headers: { Authorization: `Bearer ${token}` },
-        })
-        if (res.ok) {
-          const data = await res.json()
-          const hlMap = {}
-          data.highlights.forEach(h => {
-            hlMap[h.verse_num] = h.color
-          })
-          setHighlights({ ...localMap, ...hlMap })
-          return
-        }
-      } catch (err) {
-        console.error('獲取標註失敗:', err)
-      }
+    if (!token) {
+      setHighlights({})
+      return
     }
-    setHighlights(localMap)
+
+    try {
+      const res = await fetch(`${API_BASE}/api/highlights?version=${version}&book=${book}&chapter=${chapter}`, {
+        headers: { Authorization: `Bearer ${token}` },
+      })
+      if (res.ok) {
+        const data = await res.json()
+        const hlMap = {}
+        data.highlights.forEach(h => {
+          hlMap[h.verse_num] = h.color
+        })
+        setHighlights(hlMap)
+      }
+    } catch (err) {
+      console.error('獲取資料庫標註失敗:', err)
+    }
   }, [token])
 
-  // 讀取 activeTarget 經文內容（章節選完確定跳轉時才載入）
+  // 讀取 activeTarget 經文內容
   useEffect(() => {
     if (!activeTarget.book || !activeTarget.chapter || !activeTarget.version) return
 
@@ -244,7 +238,6 @@ export default function ReadingPage() {
   const handleVerseChange = (e) => {
     const val = e.target.value
     setSelection(prev => ({ ...prev, verse: val }))
-    // 選好節了，立即發動跳轉
     triggerJump({ ...selection, verse: val })
   }
 
@@ -253,7 +246,6 @@ export default function ReadingPage() {
     setActiveTarget({ ...targetObj })
     saveProgress(targetObj.version, targetObj.book, parseInt(targetObj.chapter), parseInt(targetObj.verse || 1))
     
-    // 如果有指定節，輕微定位該節
     if (targetObj.verse && targetObj.verse !== '1') {
       setTimeout(() => {
         const el = document.getElementById(`verse-${targetObj.verse}`)
@@ -282,44 +274,51 @@ export default function ReadingPage() {
     }
   }
 
-  // 標註與複製
+  // ─────────────────────────── 畫線標註（存入 SQLite 資料庫，未登入禁止） ───────────────────────────
   const handleSelectHighlightColor = async (verseNum, color) => {
+    // 檢查登入狀態：未登入禁止做筆記
+    if (!user || !token) {
+      showToast('請先登入帳號，才能做筆記與畫線標註（存入資料庫）', 'info')
+      openAuthModal('login')
+      return
+    }
+
     const num = parseInt(verseNum)
     setHighlights(prev => ({ ...prev, [num]: color }))
     setActiveVerseNum(null)
 
-    const localKey = `hl_${activeTarget.version}_${activeTarget.book}_${activeTarget.chapter}`
     try {
-      const updated = { ...highlights, [num]: color }
-      localStorage.setItem(localKey, JSON.stringify(updated))
-    } catch (e) {}
-
-    if (token) {
-      try {
-        await fetch(`${API_BASE}/api/highlights`, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            Authorization: `Bearer ${token}`,
-          },
-          body: JSON.stringify({
-            version: activeTarget.version,
-            book: activeTarget.book,
-            chapter: parseInt(activeTarget.chapter),
-            verse_num: num,
-            color: color,
-          }),
-        })
-        showToast(`已標註第 ${num} 節經文`)
-      } catch (err) {
-        showToast('標註儲存失敗', 'error')
+      const res = await fetch(`${API_BASE}/api/highlights`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          version: activeTarget.version,
+          book: activeTarget.book,
+          chapter: parseInt(activeTarget.chapter),
+          verse_num: num,
+          color: color,
+        }),
+      })
+      if (res.ok) {
+        showToast(`已標註第 ${num} 節（已存入資料庫）`)
+      } else {
+        throw new Error('儲存失敗')
       }
-    } else {
-      showToast(`已標註第 ${num} 節（登入可跨裝置同步）`, 'info')
+    } catch (err) {
+      showToast('標註儲存失敗', 'error')
     }
   }
 
   const handleRemoveHighlight = async (verseNum) => {
+    if (!user || !token) {
+      showToast('請先登入帳號', 'info')
+      openAuthModal('login')
+      return
+    }
+
     const num = parseInt(verseNum)
     setHighlights(prev => {
       const copy = { ...prev }
@@ -328,26 +327,16 @@ export default function ReadingPage() {
     })
     setActiveVerseNum(null)
 
-    const localKey = `hl_${activeTarget.version}_${activeTarget.book}_${activeTarget.chapter}`
     try {
-      const updated = { ...highlights }
-      delete updated[num]
-      localStorage.setItem(localKey, JSON.stringify(updated))
-    } catch (e) {}
-
-    if (token) {
-      try {
-        await fetch(`${API_BASE}/api/highlights?version=${activeTarget.version}&book=${activeTarget.book}&chapter=${activeTarget.chapter}&verse_num=${num}`, {
-          method: 'DELETE',
-          headers: { Authorization: `Bearer ${token}` },
-        })
-        showToast(`已清除第 ${num} 節標註`)
-      } catch (err) {}
-    } else {
-      showToast(`已清除第 ${num} 節標註`)
-    }
+      await fetch(`${API_BASE}/api/highlights?version=${activeTarget.version}&book=${activeTarget.book}&chapter=${activeTarget.chapter}&verse_num=${num}`, {
+        method: 'DELETE',
+        headers: { Authorization: `Bearer ${token}` },
+      })
+      showToast(`已清除第 ${num} 節標註（資料庫已更新）`)
+    } catch (err) {}
   }
 
+  // 複製經文（免登入即可複製）
   const handleCopyVerse = (verse) => {
     const bookName = books.find(b => b.id === activeTarget.book)?.name || activeTarget.book
     const versionName = versions.find(v => v.id === activeTarget.version)?.name || activeTarget.version
@@ -389,7 +378,6 @@ export default function ReadingPage() {
   const currentActiveBookName = books.find(b => b.id === activeTarget.book)?.name || activeTarget.book
   const currentActiveVersionName = versions.find(v => v.id === activeTarget.version)?.name || activeTarget.version
 
-  // 判斷當前 selection 是否與 activeTarget 不同（有未跳轉的選擇）
   const isSelectionChanged = selection.version !== activeTarget.version || selection.book !== activeTarget.book || selection.chapter !== activeTarget.chapter || selection.verse !== activeTarget.verse
 
   return (
@@ -466,7 +454,7 @@ export default function ReadingPage() {
             </div>
           </div>
 
-          {/* 前往跳轉按鈕 (選定後也可手動一鍵跳轉) */}
+          {/* 前往跳轉按鈕 */}
           {isSelectionChanged && (
             <button className="jump-now-btn" onClick={() => triggerJump(selection)}>
               <span>跳轉至 {books.find(b => b.id === selection.book)?.name} {selection.chapter} 章</span>
@@ -516,7 +504,7 @@ export default function ReadingPage() {
                   <span className="reading-version-tag">{currentActiveVersionName}</span>
                 </div>
                 <div className="reading-tips">
-                  <Highlighter size={14} /> 點擊經文進行畫線標註
+                  <Highlighter size={14} /> {user ? '點擊經文畫線標註（已同步資料庫）' : '登入後可進行經文畫線標註與個人讀經筆記'}
                 </div>
               </div>
 
