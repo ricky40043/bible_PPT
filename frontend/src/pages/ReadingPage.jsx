@@ -17,7 +17,7 @@ export const BIBLE_BOOKS = [
   { id: "EZR", name: "以斯拉記", chapters: 10 }, { id: "NEH", name: "尼希米記", chapters: 13 },
   { id: "EST", name: "以斯帖記", chapters: 10 }, { id: "JOB", name: "約伯記", chapters: 42 },
   { id: "PSA", name: "詩篇", chapters: 150 }, { id: "PRO", name: "箴言", chapters: 31 },
-  { id: "ECC", name: "傳道書", chapters: 12 }, { id: "SNG", "name": "雅歌", chapters: 8 },
+  { id: "ECC", name: "傳道書", chapters: 12 }, { id: "SNG", name: "雅歌", chapters: 8 },
   { id: "ISA", name: "以賽亞書", chapters: 66 }, { id: "JER", name: "耶利米書", chapters: 52 },
   { id: "LAM", name: "耶利米哀歌", chapters: 5 }, { id: "EZK", name: "以西結書", chapters: 48 },
   { id: "DAN", name: "但以理書", chapters: 12 }, { id: "HOS", name: "何西阿書", chapters: 14 },
@@ -48,18 +48,17 @@ export const BIBLE_VERSIONS = [
   { id: "CCB", name: "當代譯本" }
 ]
 
-// 前端記憶體快取，秒速響應
 const memoryVerseCache = new Map()
 
 export default function ReadingPage() {
   const [searchParams] = useSearchParams()
   const { user, token, progress, saveProgress } = useAuth()
 
-  const [versions, setVersions] = useState(BIBLE_VERSIONS)
-  const [books, setBooks] = useState(BIBLE_BOOKS)
+  const [versions] = useState(BIBLE_VERSIONS)
+  const [books] = useState(BIBLE_BOOKS)
   
   // 優先順序：URL 參數 > 使用者進度 > localStorage > 預設創世記 1
-  const getInitialState = () => {
+  const getInitialTarget = () => {
     const urlV = searchParams.get('version')
     const urlB = searchParams.get('book')
     const urlC = searchParams.get('chapter')
@@ -79,7 +78,11 @@ export default function ReadingPage() {
     return { version: 'CUNP', book: 'GEN', chapter: '1' }
   }
 
-  const [formData, setFormData] = useState(getInitialState)
+  // selection: 下拉選單當前的挑選狀態
+  const [selection, setSelection] = useState(getInitialTarget)
+  // activeTarget: 當前畫面上真正載入與閱讀的章節（選到「章」才更新）
+  const [activeTarget, setActiveTarget] = useState(getInitialTarget)
+
   const [chapterContent, setChapterContent] = useState([])
   const [selectedVerse, setSelectedVerse] = useState('1')
   const [loading, setLoading] = useState(false)
@@ -91,14 +94,20 @@ export default function ReadingPage() {
   const [toastMsg, setToastMsg] = useState(null)
   const [toastType, setToastType] = useState('success')
 
+  // DOM 參照，用於連鎖自動跳下一個選項
+  const versionSelectRef = useRef(null)
+  const bookSelectRef = useRef(null)
+  const chapterSelectRef = useRef(null)
+  const verseSelectRef = useRef(null)
+
   const contentRef = useRef(null)
   const touchStartX = useRef(null)
   const touchStartY = useRef(null)
   const isInitialProgressLoaded = useRef(false)
 
-  // 計算當前書卷總章數
-  const currentBookInfo = books.find(b => b.id === formData.book)
-  const totalChapters = currentBookInfo?.chapters || 50
+  // 當前選取的書卷總章數
+  const selectedBookInfo = books.find(b => b.id === selection.book)
+  const totalChapters = selectedBookInfo?.chapters || 50
 
   const showToast = (msg, type = 'success') => {
     setToastMsg(msg)
@@ -112,11 +121,13 @@ export default function ReadingPage() {
   useEffect(() => {
     if (progress && !isInitialProgressLoaded.current && !searchParams.get('book')) {
       isInitialProgressLoaded.current = true
-      setFormData({
+      const loaded = {
         version: progress.version || 'CUNP',
         book: progress.book,
         chapter: String(progress.chapter),
-      })
+      }
+      setSelection(loaded)
+      setActiveTarget(loaded)
       if (progress.verse_num) {
         setSelectedVerse(String(progress.verse_num))
       }
@@ -153,20 +164,19 @@ export default function ReadingPage() {
     setHighlights(localMap)
   }, [token])
 
-  // 3. 讀取該章經文內容（支援快取與 AbortController 防卡頓）
+  // 3. 讀取 activeTarget 經文內容（章節選定後才觸發跳轉載入）
   useEffect(() => {
-    if (!formData.book || !formData.chapter || !formData.version) return
+    if (!activeTarget.book || !activeTarget.chapter || !activeTarget.version) return
 
-    const cacheKey = `${formData.version}_${formData.book}_${formData.chapter}`
+    const cacheKey = `${activeTarget.version}_${activeTarget.book}_${activeTarget.chapter}`
     const cachedData = memoryVerseCache.get(cacheKey)
 
-    // 若快取中已有，0 毫秒立即呈現
     if (cachedData) {
       setChapterContent(cachedData)
       setLoading(false)
       setError(null)
-      fetchHighlights(formData.version, formData.book, formData.chapter)
-      saveProgress(formData.version, formData.book, parseInt(formData.chapter), parseInt(selectedVerse || 1))
+      fetchHighlights(activeTarget.version, activeTarget.book, activeTarget.chapter)
+      saveProgress(activeTarget.version, activeTarget.book, parseInt(activeTarget.chapter), parseInt(selectedVerse || 1))
       return
     }
 
@@ -178,7 +188,7 @@ export default function ReadingPage() {
     const fetchChapter = async () => {
       try {
         const res = await fetch(
-          `${API_BASE}/api/verses_list/${formData.version}/${formData.book}/${formData.chapter}`,
+          `${API_BASE}/api/verses_list/${activeTarget.version}/${activeTarget.book}/${activeTarget.chapter}`,
           { signal: abortCtrl.signal }
         )
         if (!res.ok) {
@@ -187,8 +197,8 @@ export default function ReadingPage() {
         const data = await res.json()
         memoryVerseCache.set(cacheKey, data)
         setChapterContent(data)
-        fetchHighlights(formData.version, formData.book, formData.chapter)
-        saveProgress(formData.version, formData.book, parseInt(formData.chapter), parseInt(selectedVerse || 1))
+        fetchHighlights(activeTarget.version, activeTarget.book, activeTarget.chapter)
+        saveProgress(activeTarget.version, activeTarget.book, parseInt(activeTarget.chapter), parseInt(selectedVerse || 1))
 
         setTimeout(() => {
           if (selectedVerse && selectedVerse !== '1') {
@@ -213,15 +223,88 @@ export default function ReadingPage() {
     return () => {
       abortCtrl.abort()
     }
-  }, [formData.book, formData.chapter, formData.version, fetchHighlights])
+  }, [activeTarget, fetchHighlights])
 
-  // 儲存/更新標註顏色
+  // ─────────────────────────── 連鎖自動跳下一個選項 ───────────────────────────
+
+  // (1) 選擇版本 -> 自動跳往「書卷」選單
+  const handleVersionChange = (e) => {
+    const newVersion = e.target.value
+    setSelection(prev => ({ ...prev, version: newVersion }))
+    // 若當前書卷與章節已齊全，也可直接切換版本
+    setActiveTarget(prev => ({ ...prev, version: newVersion }))
+    // 自動 focus 到書卷
+    setTimeout(() => {
+      bookSelectRef.current?.focus()
+    }, 50)
+  }
+
+  // (2) 選擇書卷 -> 自動跳往「章」選單，先不跳轉經文
+  const handleBookChange = (e) => {
+    const newBook = e.target.value
+    setSelection(prev => ({ ...prev, book: newBook, chapter: '1' }))
+    setSelectedVerse('1')
+    
+    // 自動 focus 到章節選單，引導使用者挑選章數
+    setTimeout(() => {
+      chapterSelectRef.current?.focus()
+    }, 50)
+  }
+
+  // (3) 選擇章 -> 章節選定，正式觸發經文載入與跳轉！並自動跳往「節」
+  const handleChapterChange = (e) => {
+    const newChapter = e.target.value
+    setSelection(prev => ({ ...prev, chapter: newChapter }))
+    setSelectedVerse('1')
+    // 正式跳轉載入經文
+    setActiveTarget({
+      version: selection.version,
+      book: selection.book,
+      chapter: newChapter,
+    })
+    // 自動 focus 到節（若想快速跳節）
+    setTimeout(() => {
+      verseSelectRef.current?.focus()
+    }, 50)
+  }
+
+  // (4) 選擇節 -> 平滑滾動到該節
+  const handleVerseJump = (e) => {
+    const num = e.target.value
+    setSelectedVerse(num)
+    const el = document.getElementById(`verse-${num}`)
+    if (el) el.scrollIntoView({ behavior: 'smooth', block: 'center' })
+    saveProgress(activeTarget.version, activeTarget.book, parseInt(activeTarget.chapter), parseInt(num))
+  }
+
+  // 上一章 / 下一章按鈕操作
+  const handlePrevChapter = () => {
+    const prevChap = (parseInt(activeTarget.chapter) - 1).toString()
+    if (parseInt(prevChap) >= 1) {
+      const nextTarget = { ...activeTarget, chapter: prevChap }
+      setSelection(nextTarget)
+      setActiveTarget(nextTarget)
+      setSelectedVerse('1')
+    }
+  }
+
+  const handleNextChapter = () => {
+    const nextChap = (parseInt(activeTarget.chapter) + 1).toString()
+    if (parseInt(nextChap) <= totalChapters) {
+      const nextTarget = { ...activeTarget, chapter: nextChap }
+      setSelection(nextTarget)
+      setActiveTarget(nextTarget)
+      setSelectedVerse('1')
+    }
+  }
+
+  // 標註與複製
   const handleSelectHighlightColor = async (verseNum, color) => {
     const num = parseInt(verseNum)
     setHighlights(prev => ({ ...prev, [num]: color }))
     setActiveVerseNum(null)
 
-    const localKey = `hl_${formData.version}_${formData.book}_${formData.chapter}`
+    const localKey = `hl_${activeTarget.version}_${activeTarget.book}_${activeTarget.chapter}`
     try {
       const updated = { ...highlights, [num]: color }
       localStorage.setItem(localKey, JSON.stringify(updated))
@@ -236,9 +319,9 @@ export default function ReadingPage() {
             Authorization: `Bearer ${token}`,
           },
           body: JSON.stringify({
-            version: formData.version,
-            book: formData.book,
-            chapter: parseInt(formData.chapter),
+            version: activeTarget.version,
+            book: activeTarget.book,
+            chapter: parseInt(activeTarget.chapter),
             verse_num: num,
             color: color,
           }),
@@ -252,7 +335,6 @@ export default function ReadingPage() {
     }
   }
 
-  // 移除標註
   const handleRemoveHighlight = async (verseNum) => {
     const num = parseInt(verseNum)
     setHighlights(prev => {
@@ -262,7 +344,7 @@ export default function ReadingPage() {
     })
     setActiveVerseNum(null)
 
-    const localKey = `hl_${formData.version}_${formData.book}_${formData.chapter}`
+    const localKey = `hl_${activeTarget.version}_${activeTarget.book}_${activeTarget.chapter}`
     try {
       const updated = { ...highlights }
       delete updated[num]
@@ -271,7 +353,7 @@ export default function ReadingPage() {
 
     if (token) {
       try {
-        await fetch(`${API_BASE}/api/highlights?version=${formData.version}&book=${formData.book}&chapter=${formData.chapter}&verse_num=${num}`, {
+        await fetch(`${API_BASE}/api/highlights?version=${activeTarget.version}&book=${activeTarget.book}&chapter=${activeTarget.chapter}&verse_num=${num}`, {
           method: 'DELETE',
           headers: { Authorization: `Bearer ${token}` },
         })
@@ -284,45 +366,23 @@ export default function ReadingPage() {
     }
   }
 
-  // 複製單節經文
   const handleCopyVerse = (verse) => {
-    const bookName = books.find(b => b.id === formData.book)?.name || formData.book
-    const versionName = versions.find(v => v.id === formData.version)?.name || formData.version
-    const formatted = `【${bookName} ${formData.chapter}:${verse.num} ${formData.version}】${verse.text}`
+    const bookName = books.find(b => b.id === activeTarget.book)?.name || activeTarget.book
+    const versionName = versions.find(v => v.id === activeTarget.version)?.name || activeTarget.version
+    const formatted = `【${bookName} ${activeTarget.chapter}:${verse.num} ${activeTarget.version}】${verse.text}`
     navigator.clipboard.writeText(formatted)
-    showToast(`已複製經文：${bookName} ${formData.chapter}:${verse.num}`)
+    showToast(`已複製經文：${bookName} ${activeTarget.chapter}:${verse.num}`)
     setActiveVerseNum(null)
   }
 
-  // 複製全章經文
   const handleCopyEntireChapter = () => {
     if (!chapterContent.length) return
-    const bookName = books.find(b => b.id === formData.book)?.name || formData.book
-    const versionName = versions.find(v => v.id === formData.version)?.name || formData.version
+    const bookName = books.find(b => b.id === activeTarget.book)?.name || activeTarget.book
+    const versionName = versions.find(v => v.id === activeTarget.version)?.name || activeTarget.version
     const textLines = chapterContent.map(v => `${v.num}. ${v.text}`).join('\n')
-    const fullText = `【${bookName} 第 ${formData.chapter} 章 (${versionName})】\n${textLines}`
+    const fullText = `【${bookName} 第 ${activeTarget.chapter} 章 (${versionName})】\n${textLines}`
     navigator.clipboard.writeText(fullText)
-    showToast(`已複製 ${bookName} 第 ${formData.chapter} 章全部經文！`)
-  }
-
-  const handleChange = (e) => {
-    const { name, value } = e.target
-    setFormData(prev => ({
-      ...prev,
-      [name]: value,
-      ...(name === 'book' ? { chapter: '1' } : {}),
-    }))
-    if (name === 'book' || name === 'chapter') {
-      setSelectedVerse('1')
-    }
-  }
-
-  const handleVerseJump = (e) => {
-    const num = e.target.value
-    setSelectedVerse(num)
-    const el = document.getElementById(`verse-${num}`)
-    if (el) el.scrollIntoView({ behavior: 'smooth', block: 'center' })
-    saveProgress(formData.version, formData.book, parseInt(formData.chapter), parseInt(num))
+    showToast(`已複製 ${bookName} 第 ${activeTarget.chapter} 章全部經文！`)
   }
 
   const handleTouchStart = (e) => {
@@ -337,15 +397,15 @@ export default function ReadingPage() {
     touchStartX.current = null
     touchStartY.current = null
     if (Math.abs(dx) < 50 || Math.abs(dx) < Math.abs(dy)) return
-    if (dx < 0 && parseInt(formData.chapter) < totalChapters) {
-      setFormData(prev => ({ ...prev, chapter: (parseInt(prev.chapter) + 1).toString() }))
-    } else if (dx > 0 && parseInt(formData.chapter) > 1) {
-      setFormData(prev => ({ ...prev, chapter: (parseInt(prev.chapter) - 1).toString() }))
+    if (dx < 0) {
+      handleNextChapter()
+    } else if (dx > 0) {
+      handlePrevChapter()
     }
   }
 
-  const bookName = books.find(b => b.id === formData.book)?.name || formData.book
-  const versionName = versions.find(v => v.id === formData.version)?.name || formData.version
+  const currentActiveBookName = books.find(b => b.id === activeTarget.book)?.name || activeTarget.book
+  const currentActiveVersionName = versions.find(v => v.id === activeTarget.version)?.name || activeTarget.version
 
   return (
     <div className="reading-page-wrapper" onClick={() => setActiveVerseNum(null)}>
@@ -361,36 +421,63 @@ export default function ReadingPage() {
               </button>
             )}
           </div>
-          <p>選擇章節閱讀，點擊經文即可<b>畫線標註顏色</b>或<b>一鍵複製</b></p>
+          <p>循序選擇版本、書卷、章節後自動跳轉；點擊經文可<b>畫線標註</b>或<b>複製</b></p>
         </div>
 
         {error && <div className="error-msg">{error}</div>}
 
-        {/* 選擇器列 */}
+        {/* 選擇器列（連鎖自動跳轉引導） */}
         <div className="reading-selector-bar">
           <div className="reading-select-group">
-            <label>版本</label>
-            <select className="form-control" name="version" value={formData.version} onChange={handleChange}>
+            <label>1. 版本</label>
+            <select
+              ref={versionSelectRef}
+              className="form-control"
+              name="version"
+              value={selection.version}
+              onChange={handleVersionChange}
+            >
               {versions.map(v => <option key={v.id} value={v.id}>{v.name}</option>)}
             </select>
           </div>
+
           <div className="reading-select-group">
-            <label>書卷</label>
-            <select className="form-control" name="book" value={formData.book} onChange={handleChange}>
+            <label>2. 書卷</label>
+            <select
+              ref={bookSelectRef}
+              className="form-control"
+              name="book"
+              value={selection.book}
+              onChange={handleBookChange}
+            >
               {books.map(b => <option key={b.id} value={b.id}>{b.name}</option>)}
             </select>
           </div>
+
           <div className="reading-select-group reading-select-small">
-            <label>章</label>
-            <select className="form-control" name="chapter" value={formData.chapter} onChange={handleChange}>
+            <label>3. 章 (選定跳轉)</label>
+            <select
+              ref={chapterSelectRef}
+              className="form-control"
+              name="chapter"
+              value={selection.chapter}
+              onChange={handleChapterChange}
+            >
               {Array.from({ length: totalChapters }, (_, i) => i + 1).map(num => (
                 <option key={num} value={num}>{num}</option>
               ))}
             </select>
           </div>
+
           <div className="reading-select-group reading-select-small">
-            <label>節 (快速跳轉)</label>
-            <select className="form-control" value={selectedVerse} onChange={handleVerseJump} disabled={chapterContent.length === 0}>
+            <label>4. 節 (定位)</label>
+            <select
+              ref={verseSelectRef}
+              className="form-control"
+              value={selectedVerse}
+              onChange={handleVerseJump}
+              disabled={chapterContent.length === 0}
+            >
               {chapterContent.map(v => (
                 <option key={v.num} value={v.num}>{v.num}</option>
               ))}
@@ -402,18 +489,18 @@ export default function ReadingPage() {
         <div className="reading-chapter-nav">
           <button
             className="reading-nav-btn"
-            disabled={parseInt(formData.chapter) <= 1}
-            onClick={() => setFormData(prev => ({ ...prev, chapter: (parseInt(prev.chapter) - 1).toString() }))}
+            disabled={parseInt(activeTarget.chapter) <= 1}
+            onClick={handlePrevChapter}
           >
             ← 上一章
           </button>
           <span className="reading-chapter-title">
-            {bookName} 第 {formData.chapter} 章
+            {currentActiveBookName} 第 {activeTarget.chapter} 章
           </span>
           <button
             className="reading-nav-btn"
-            disabled={parseInt(formData.chapter) >= totalChapters}
-            onClick={() => setFormData(prev => ({ ...prev, chapter: (parseInt(prev.chapter) + 1).toString() }))}
+            disabled={parseInt(activeTarget.chapter) >= totalChapters}
+            onClick={handleNextChapter}
           >
             下一章 →
           </button>
@@ -435,8 +522,8 @@ export default function ReadingPage() {
             <>
               <div className="reading-header-bar">
                 <div className="reading-title-wrap">
-                  <span className="reading-book-title">{bookName} 第 {formData.chapter} 章</span>
-                  <span className="reading-version-tag">{versionName}</span>
+                  <span className="reading-book-title">{currentActiveBookName} 第 {activeTarget.chapter} 章</span>
+                  <span className="reading-version-tag">{currentActiveVersionName}</span>
                 </div>
                 <div className="reading-tips">
                   <Highlighter size={14} /> 點擊經文進行畫線標註
@@ -488,18 +575,18 @@ export default function ReadingPage() {
         <div className="reading-chapter-nav reading-chapter-nav-bottom">
           <button
             className="reading-nav-btn"
-            disabled={parseInt(formData.chapter) <= 1}
-            onClick={() => setFormData(prev => ({ ...prev, chapter: (parseInt(prev.chapter) - 1).toString() }))}
+            disabled={parseInt(activeTarget.chapter) <= 1}
+            onClick={handlePrevChapter}
           >
             ← 上一章
           </button>
           <span className="reading-chapter-title">
-            {bookName} 第 {formData.chapter} 章
+            {currentActiveBookName} 第 {activeTarget.chapter} 章
           </span>
           <button
             className="reading-nav-btn"
-            disabled={parseInt(formData.chapter) >= totalChapters}
-            onClick={() => setFormData(prev => ({ ...prev, chapter: (parseInt(prev.chapter) + 1).toString() }))}
+            disabled={parseInt(activeTarget.chapter) >= totalChapters}
+            onClick={handleNextChapter}
           >
             下一章 →
           </button>
