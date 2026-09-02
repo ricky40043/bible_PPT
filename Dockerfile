@@ -18,6 +18,9 @@ COPY backend/*.py ./
 # 後台頁（使用紀錄）
 COPY backend/admin.html ./
 
+# 複製經文資料庫
+COPY backend/data ./data
+
 # 複製 PPT 範本；產生簡報時 python-pptx 需要讀取這個檔案
 COPY ["經文範本.pptx", "./經文範本.pptx"]
 
