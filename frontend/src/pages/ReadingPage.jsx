@@ -205,6 +205,12 @@ export default function ReadingPage() {
     }
   }, [activeTarget, fetchHighlights])
 
+  // 每次切換書卷或章節，都從頁面最上方開始閱讀。
+  // 不把 verse 放進依賴，避免使用者跳到指定節時又被拉回頂端。
+  useEffect(() => {
+    window.scrollTo({ top: 0, left: 0, behavior: 'auto' })
+  }, [activeTarget.version, activeTarget.book, activeTarget.chapter])
+
   // ─────────────────────────── 手機/桌面 連鎖選經流程 ───────────────────────────
 
   // 1. 選擇版本 -> 自動跳往下一個「書卷」選單（不滾動頁面、不發動跳轉）
