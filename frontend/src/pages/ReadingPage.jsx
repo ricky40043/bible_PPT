@@ -206,10 +206,26 @@ export default function ReadingPage() {
   }, [activeTarget, fetchHighlights])
 
   // 每次切換書卷或章節，都從頁面最上方開始閱讀。
+  // 在內容載入完成後再執行，避免瀏覽器在 React 重新渲染後恢復舊捲動位置。
   // 不把 verse 放進依賴，避免使用者跳到指定節時又被拉回頂端。
   useEffect(() => {
-    window.scrollTo({ top: 0, left: 0, behavior: 'auto' })
-  }, [activeTarget.version, activeTarget.book, activeTarget.chapter])
+    if (loading) return
+
+    const scrollToTop = () => {
+      window.scrollTo(0, 0)
+      document.documentElement.scrollTop = 0
+      document.body.scrollTop = 0
+    }
+
+    scrollToTop()
+    const frame = window.requestAnimationFrame(scrollToTop)
+    const retry = window.setTimeout(scrollToTop, 80)
+
+    return () => {
+      window.cancelAnimationFrame(frame)
+      window.clearTimeout(retry)
+    }
+  }, [activeTarget.version, activeTarget.book, activeTarget.chapter, loading])
 
   // ─────────────────────────── 手機/桌面 連鎖選經流程 ───────────────────────────
 
