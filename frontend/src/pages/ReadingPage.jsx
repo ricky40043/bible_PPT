@@ -50,6 +50,26 @@ export const BIBLE_VERSIONS = [
 
 const memoryVerseCache = new Map()
 
+function BookPickerItem({ book, selection, onChooseBook, onChooseChapter }) {
+  const expanded = selection.book === book.id
+  return (
+    <div className={`book-picker-book-group ${expanded ? 'expanded' : ''}`}>
+      <button type="button" className={`book-picker-item ${expanded ? 'selected' : ''}`} onClick={() => onChooseBook(book.id)}>
+        {book.name}
+      </button>
+      {expanded && (
+        <div className="chapter-picker-grid">
+          {Array.from({ length: book.chapters }, (_, i) => i + 1).map(chapter => (
+            <button key={chapter} type="button" className={String(selection.chapter) === String(chapter) ? 'selected' : ''} onClick={() => onChooseChapter(book.id, chapter)}>
+              {chapter}
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  )
+}
+
 export default function ReadingPage() {
   const [searchParams] = useSearchParams()
   const { user, token, progress, saveProgress, openAuthModal } = useAuth()
@@ -270,9 +290,14 @@ export default function ReadingPage() {
   }
 
   const chooseBook = (bookId) => {
-    setSelection(prev => ({ ...prev, book: bookId, chapter: '', verse: '1' }))
+    setSelection(prev => ({ ...prev, book: bookId, chapter: prev.book === bookId ? prev.chapter : '1', verse: '1' }))
+  }
+
+  const choosePickerChapter = (bookId, chapter) => {
+    const target = { version: selection.version, book: bookId, chapter: String(chapter), verse: '1' }
+    setSelection(target)
+    setActiveTarget(target)
     setBookPickerOpen(false)
-    setTimeout(() => chapterSelectRef.current?.focus(), 50)
   }
 
   const openRecentRead = (item) => {
@@ -545,17 +570,9 @@ export default function ReadingPage() {
               </div>
               <div className="book-picker-list">
                 <div className="book-picker-section-title">舊約</div>
-                {books.slice(0, 39).map(book => (
-                  <button key={book.id} type="button" className={`book-picker-item ${selection.book === book.id ? 'selected' : ''}`} onClick={() => chooseBook(book.id)}>
-                    {book.name}
-                  </button>
-                ))}
+                {books.slice(0, 39).map(book => <BookPickerItem key={book.id} book={book} selection={selection} onChooseBook={chooseBook} onChooseChapter={choosePickerChapter} />)}
                 <div className="book-picker-section-title">新約</div>
-                {books.slice(39).map(book => (
-                  <button key={book.id} type="button" className={`book-picker-item ${selection.book === book.id ? 'selected' : ''}`} onClick={() => chooseBook(book.id)}>
-                    {book.name}
-                  </button>
-                ))}
+                {books.slice(39).map(book => <BookPickerItem key={book.id} book={book} selection={selection} onChooseBook={chooseBook} onChooseChapter={choosePickerChapter} />)}
               </div>
               {recentReads.length > 0 && (
                 <div className="book-picker-recent">

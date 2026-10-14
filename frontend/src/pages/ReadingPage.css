@@ -114,6 +114,17 @@
   font-size: 1.12rem; cursor: pointer;
 }
 .book-picker-item:hover, .book-picker-item.selected { background: #403b3b; }
+.book-picker-book-group.expanded { padding-bottom: 12px; }
+.chapter-picker-grid {
+  display: grid; grid-template-columns: repeat(5, 1fr); gap: 8px;
+  padding: 0 24px;
+}
+.chapter-picker-grid button {
+  height: 58px; border: 0; border-radius: 10px; background: #393738;
+  color: #f5f5f5; font-size: 1.05rem; font-weight: 600; cursor: pointer;
+}
+.chapter-picker-grid button:hover { background: #514e4f; }
+.chapter-picker-grid button.selected { background: #f1f1f1; color: #111; }
 .book-picker-recent { padding: 14px 20px 22px; border-top: 1px solid rgba(255,255,255,.1); background: #111; }
 .book-picker-recent h3 { margin: 0 0 12px; font-size: 1rem; }
 .book-picker-recent h3 span { color: #a1a1aa; font-size: 1.4rem; vertical-align: -1px; }
