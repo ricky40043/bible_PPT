@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
 import { useSearchParams } from 'react-router-dom'
-import { BookOpen, Copy, Highlighter, ArrowRight } from 'lucide-react'
+import { BookOpen, Copy, Highlighter, Volume2, Search, MoreHorizontal, Play, Pause, ChevronLeft, ChevronRight, Home, CalendarCheck, User, Settings, Plus, Cloud } from 'lucide-react'
 import { useAuth, API_BASE } from '../context/AuthContext'
 import HighlightToolbar from '../components/HighlightToolbar'
 import Toast from '../components/Toast'
@@ -50,6 +50,26 @@ export const BIBLE_VERSIONS = [
 
 const memoryVerseCache = new Map()
 
+function BookPickerItem({ book, selection, onChooseBook, onChooseChapter }) {
+  const expanded = selection.book === book.id
+  return (
+    <div className={`book-picker-book-group ${expanded ? 'expanded' : ''}`}>
+      <button type="button" className={`book-picker-item ${expanded ? 'selected' : ''}`} onClick={() => onChooseBook(book.id)}>
+        {book.name}
+      </button>
+      {expanded && (
+        <div className="chapter-picker-grid">
+          {Array.from({ length: book.chapters }, (_, i) => i + 1).map(chapter => (
+            <button key={chapter} type="button" className={String(selection.chapter) === String(chapter) ? 'selected' : ''} onClick={() => onChooseChapter(book.id, chapter)}>
+              {chapter}
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  )
+}
+
 export default function ReadingPage() {
   const [searchParams] = useSearchParams()
   const { user, token, progress, saveProgress, openAuthModal } = useAuth()
@@ -92,15 +112,27 @@ export default function ReadingPage() {
   const [activeVerseNum, setActiveVerseNum] = useState(null)
   const [toastMsg, setToastMsg] = useState(null)
   const [toastType, setToastType] = useState('success')
+  const [bookPickerOpen, setBookPickerOpen] = useState(false)
+  const [recentReads, setRecentReads] = useState([])
+  const [isSpeaking, setIsSpeaking] = useState(false)
+  const [versionPickerOpen, setVersionPickerOpen] = useState(false)
 
   const bookSelectRef = useRef(null)
   const chapterSelectRef = useRef(null)
-  const verseSelectRef = useRef(null)
 
   const contentRef = useRef(null)
   const touchStartX = useRef(null)
   const touchStartY = useRef(null)
   const isInitialProgressLoaded = useRef(false)
+
+  useEffect(() => {
+    try {
+      const saved = JSON.parse(localStorage.getItem('bible_recent_reads') || '[]')
+      setRecentReads(Array.isArray(saved) ? saved : [])
+    } catch (e) {
+      setRecentReads([])
+    }
+  }, [])
 
   // 計算選中書卷的總章數
   const selectedBookInfo = books.find(b => b.id === selection.book)
@@ -164,9 +196,10 @@ export default function ReadingPage() {
       setChapterContent(cachedData)
       setLoading(false)
       setError(null)
-      fetchHighlights(activeTarget.version, activeTarget.book, activeTarget.chapter)
-      saveProgress(activeTarget.version, activeTarget.book, parseInt(activeTarget.chapter), parseInt(activeTarget.verse || 1))
-      return
+        fetchHighlights(activeTarget.version, activeTarget.book, activeTarget.chapter)
+        saveProgress(activeTarget.version, activeTarget.book, parseInt(activeTarget.chapter), parseInt(activeTarget.verse || 1))
+        rememberRecentRead(activeTarget)
+        return
     }
 
     const abortCtrl = new AbortController()
@@ -188,6 +221,7 @@ export default function ReadingPage() {
         setChapterContent(data)
         fetchHighlights(activeTarget.version, activeTarget.book, activeTarget.chapter)
         saveProgress(activeTarget.version, activeTarget.book, parseInt(activeTarget.chapter), parseInt(activeTarget.verse || 1))
+        rememberRecentRead(activeTarget)
       } catch (err) {
         if (err.name !== 'AbortError') {
           console.error(err)
@@ -204,6 +238,15 @@ export default function ReadingPage() {
       abortCtrl.abort()
     }
   }, [activeTarget, fetchHighlights])
+
+  const rememberRecentRead = (target) => {
+    const item = { version: target.version, book: target.book, chapter: String(target.chapter) }
+    setRecentReads(prev => {
+      const next = [item, ...prev.filter(r => !(r.version === item.version && r.book === item.book && r.chapter === item.chapter))].slice(0, 6)
+      localStorage.setItem('bible_recent_reads', JSON.stringify(next))
+      return next
+    })
+  }
 
   // 每次切換書卷或章節，都從頁面最上方開始閱讀。
   // 在內容載入完成後再執行，避免瀏覽器在 React 重新渲染後恢復舊捲動位置。
@@ -238,32 +281,48 @@ export default function ReadingPage() {
     }, 50)
   }
 
-  // 2. 選擇書卷 -> 自動跳往下一個「章」選單（不滾動頁面、不發動跳轉）
+  // 2. 選擇書卷 -> 自動跳往「章」選單（選完章才開始載入）
   const handleBookChange = (e) => {
     const val = e.target.value
-    setSelection(prev => ({ ...prev, book: val, chapter: '1', verse: '1' }))
+    setSelection(prev => ({ ...prev, book: val, chapter: '', verse: '1' }))
     setTimeout(() => {
       chapterSelectRef.current?.focus()
     }, 50)
   }
 
-  // 3. 選擇章 -> 自動跳往下一個「節」選單（不滾動頁面、不發動跳轉）
+  const chooseBook = (bookId) => {
+    setSelection(prev => ({ ...prev, book: bookId, chapter: prev.book === bookId ? prev.chapter : '1', verse: '1' }))
+  }
+
+  const choosePickerChapter = (bookId, chapter) => {
+    const target = { version: selection.version, book: bookId, chapter: String(chapter), verse: '1' }
+    setSelection(target)
+    setActiveTarget(target)
+    setBookPickerOpen(false)
+  }
+
+  const openRecentRead = (item) => {
+    const target = { version: item.version, book: item.book, chapter: item.chapter, verse: '1' }
+    setSelection(target)
+    setActiveTarget(target)
+    setBookPickerOpen(false)
+  }
+
+  const chooseVersion = (version) => {
+    const target = { ...activeTarget, version: version.id }
+    setSelection(target)
+    setActiveTarget(target)
+    setVersionPickerOpen(false)
+  }
+
+  // 3. 選擇章 -> 立即載入該章，不再要求選節
   const handleChapterChange = (e) => {
     const val = e.target.value
     setSelection(prev => ({ ...prev, chapter: val, verse: '1' }))
-    setTimeout(() => {
-      verseSelectRef.current?.focus()
-    }, 50)
+    triggerJump({ ...selection, chapter: val, verse: '1' })
   }
 
-  // 4. 選擇節 -> 選完節（或點擊前往）後，正式跳轉並載入經文！
-  const handleVerseChange = (e) => {
-    const val = e.target.value
-    setSelection(prev => ({ ...prev, verse: val }))
-    triggerJump({ ...selection, verse: val })
-  }
-
-  // 執行跳轉（版本、書卷、章、節全部確認）
+  // 執行跳轉（版本、書卷、章確認後載入整章）
   const triggerJump = (targetObj = selection) => {
     setActiveTarget({ ...targetObj })
     saveProgress(targetObj.version, targetObj.book, parseInt(targetObj.chapter), parseInt(targetObj.verse || 1))
@@ -378,6 +437,24 @@ export default function ReadingPage() {
     showToast(`已複製 ${bookName} 第 ${activeTarget.chapter} 章全部經文！`)
   }
 
+  const toggleSpeech = () => {
+    if (!('speechSynthesis' in window) || !chapterContent.length) return
+    if (isSpeaking) {
+      window.speechSynthesis.cancel()
+      setIsSpeaking(false)
+      return
+    }
+    const text = chapterContent.map(v => `${v.num}。${v.text}`).join(' ')
+    const utterance = new SpeechSynthesisUtterance(text)
+    utterance.lang = 'zh-TW'
+    utterance.rate = 0.9
+    utterance.onend = () => setIsSpeaking(false)
+    utterance.onerror = () => setIsSpeaking(false)
+    window.speechSynthesis.cancel()
+    window.speechSynthesis.speak(utterance)
+    setIsSpeaking(true)
+  }
+
   const handleTouchStart = (e) => {
     touchStartX.current = e.touches[0].clientX
     touchStartY.current = e.touches[0].clientY
@@ -400,11 +477,50 @@ export default function ReadingPage() {
   const currentActiveBookName = books.find(b => b.id === activeTarget.book)?.name || activeTarget.book
   const currentActiveVersionName = versions.find(v => v.id === activeTarget.version)?.name || activeTarget.version
 
-  const isSelectionChanged = selection.version !== activeTarget.version || selection.book !== activeTarget.book || selection.chapter !== activeTarget.chapter || selection.verse !== activeTarget.verse
-
   return (
     <div className="reading-page-wrapper" onClick={() => setActiveVerseNum(null)}>
       <Toast message={toastMsg} type={toastType} onClose={() => setToastMsg(null)} />
+
+      <div className="mobile-reader-toolbar">
+        <button type="button" className="mobile-reader-book" onClick={() => setBookPickerOpen(true)}>
+          {currentActiveBookName} {activeTarget.chapter}
+        </button>
+        <button type="button" className="mobile-reader-version" onClick={() => setVersionPickerOpen(true)}>
+          {activeTarget.version}
+        </button>
+        <button type="button" className="mobile-reader-icon" onClick={toggleSpeech} aria-label="朗讀">
+          <Volume2 size={24} />
+        </button>
+        <button type="button" className="mobile-reader-icon" aria-label="搜尋" onClick={() => showToast('搜尋功能即將推出', 'info')}>
+          <Search size={27} />
+        </button>
+        <button type="button" className="mobile-reader-icon" aria-label="更多" onClick={() => showToast('點擊經文可標註或複製', 'info')}>
+          <MoreHorizontal size={27} />
+        </button>
+      </div>
+
+      {versionPickerOpen && (
+        <div className="version-picker-backdrop" onClick={() => setVersionPickerOpen(false)}>
+          <section className="version-picker-sheet" onClick={e => e.stopPropagation()}>
+            <div className="version-picker-handle" />
+            <div className="version-picker-title-row">
+              <h2>我的譯本</h2>
+              <div><button type="button" aria-label="設定"><Settings size={27} /></button><button type="button" aria-label="新增譯本"><Plus size={30} /></button></div>
+            </div>
+            <div className="version-picker-list">
+              {versions.map(version => (
+                <button key={version.id} type="button" className={`version-picker-item ${version.id === activeTarget.version ? 'selected' : ''}`} onClick={() => chooseVersion(version)}>
+                  <span className="version-code">{version.id}<b>{version.id === 'CUNP' ? '神' : ''}</b></span>
+                  <span className="version-details"><small>{version.id === 'CCB' ? 'Biblica, Inc.' : 'Hong Kong Bible Society'}</small><strong>{version.id === 'CUNP' ? '新標點和合本, 神版' : version.name}</strong></span>
+                  <Cloud size={24} className="version-cloud" /><MoreHorizontal size={23} className="version-more" />
+                </button>
+              ))}
+            </div>
+            <button type="button" className="more-versions-btn" onClick={() => showToast('更多譯本功能即將推出', 'info')}>更多譯本</button>
+            <p className="version-picker-count">3,868 譯本 共 2,463 種語言</p>
+          </section>
+        </div>
+      )}
 
       <div className="app-container">
         <div className="header">
@@ -416,7 +532,7 @@ export default function ReadingPage() {
               </button>
             )}
           </div>
-          <p>依序選好版本、書卷、章、節後直接跳轉；點擊經文可<b>畫線</b>或<b>複製</b></p>
+          <p>選好版本、書卷與章後立即開始閱讀；點擊經文可<b>畫線</b>或<b>複製</b></p>
         </div>
 
         {error && <div className="error-msg">{error}</div>}
@@ -435,7 +551,13 @@ export default function ReadingPage() {
               </select>
             </div>
 
-            <div className="reading-select-group">
+            <button className="book-picker-trigger" type="button" onClick={() => setBookPickerOpen(true)}>
+              <span className="book-picker-trigger-label">書卷</span>
+              <span>{books.find(b => b.id === selection.book)?.name || '選擇書卷'}</span>
+              <span className="book-picker-chevron">›</span>
+            </button>
+
+            <div className="reading-select-group book-select-group">
               <label>2. 書卷</label>
               <select
                 ref={bookSelectRef}
@@ -455,35 +577,47 @@ export default function ReadingPage() {
                 value={selection.chapter}
                 onChange={handleChapterChange}
               >
+                <option value="" disabled>請選擇章</option>
                 {Array.from({ length: totalChapters }, (_, i) => i + 1).map(num => (
                   <option key={num} value={num}>{num}</option>
                 ))}
               </select>
             </div>
-
-            <div className="reading-select-group reading-select-small">
-              <label>4. 節 (選完跳轉)</label>
-              <select
-                ref={verseSelectRef}
-                className="form-control"
-                value={selection.verse}
-                onChange={handleVerseChange}
-              >
-                {Array.from({ length: 60 }, (_, i) => i + 1).map(num => (
-                  <option key={num} value={num}>{num}</option>
-                ))}
-              </select>
-            </div>
           </div>
-
-          {/* 前往跳轉按鈕 */}
-          {isSelectionChanged && (
-            <button className="jump-now-btn" onClick={() => triggerJump(selection)}>
-              <span>跳轉至 {books.find(b => b.id === selection.book)?.name} {selection.chapter} 章</span>
-              <ArrowRight size={16} />
-            </button>
-          )}
         </div>
+
+        {bookPickerOpen && (
+          <div className="book-picker-backdrop" onClick={() => setBookPickerOpen(false)}>
+            <section className="book-picker-sheet" onClick={e => e.stopPropagation()}>
+              <div className="book-picker-header">
+                <button type="button" className="book-picker-close" onClick={() => setBookPickerOpen(false)}>×</button>
+                <h2>書卷</h2>
+                <span className="book-picker-more">•••</span>
+              </div>
+              <div className="book-picker-list">
+                <div className="book-picker-section-title">舊約</div>
+                {books.slice(0, 39).map(book => <BookPickerItem key={book.id} book={book} selection={selection} onChooseBook={chooseBook} onChooseChapter={choosePickerChapter} />)}
+                <div className="book-picker-section-title">新約</div>
+                {books.slice(39).map(book => <BookPickerItem key={book.id} book={book} selection={selection} onChooseBook={chooseBook} onChooseChapter={choosePickerChapter} />)}
+              </div>
+              {recentReads.length > 0 && (
+                <div className="book-picker-recent">
+                  <h3>最近使用 <span>›</span></h3>
+                  <div className="recent-read-grid">
+                    {recentReads.slice(0, 4).map(item => {
+                      const book = books.find(b => b.id === item.book)
+                      const version = versions.find(v => v.id === item.version)
+                      return <button key={`${item.version}-${item.book}-${item.chapter}`} type="button" className="recent-read-card" onClick={() => openRecentRead(item)}>
+                        <strong>{book?.name || item.book} {item.chapter}</strong>
+                        <small>{version?.name || item.version}</small>
+                      </button>
+                    })}
+                  </div>
+                </div>
+              )}
+            </section>
+          </div>
+        )}
 
         {/* 章節導航 */}
         <div className="reading-chapter-nav">
@@ -590,6 +724,21 @@ export default function ReadingPage() {
           >
             下一章 →
           </button>
+        </div>
+
+        <div className="mobile-reader-controls">
+          <button type="button" onClick={handlePrevChapter} disabled={parseInt(activeTarget.chapter) <= 1} aria-label="上一章"><ChevronLeft size={34} /></button>
+          <button type="button" className="mobile-reader-play" onClick={toggleSpeech} disabled={!chapterContent.length} aria-label={isSpeaking ? '停止朗讀' : '朗讀'}>
+            {isSpeaking ? <Pause size={28} fill="currentColor" /> : <Play size={28} fill="currentColor" />}
+          </button>
+          <button type="button" onClick={handleNextChapter} disabled={parseInt(activeTarget.chapter) >= (books.find(b => b.id === activeTarget.book)?.chapters || 50)} aria-label="下一章"><ChevronRight size={34} /></button>
+        </div>
+        <div className="mobile-reader-tabbar">
+          <span><Home size={22} />首頁</span>
+          <span className="active"><BookOpen size={22} />聖經</span>
+          <span><CalendarCheck size={22} />計畫</span>
+          <span><Search size={22} />發掘</span>
+          <span><User size={22} />你</span>
         </div>
       </div>
     </div>
