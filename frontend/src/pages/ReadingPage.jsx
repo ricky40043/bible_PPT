@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
 import { useSearchParams } from 'react-router-dom'
-import { BookOpen, Copy, Highlighter, Volume2, Search, MoreHorizontal, Play, Pause, ChevronLeft, ChevronRight, Home, CalendarCheck, User } from 'lucide-react'
+import { BookOpen, Copy, Highlighter, Volume2, Search, MoreHorizontal, Play, Pause, ChevronLeft, ChevronRight, Home, CalendarCheck, User, Settings, Plus, Cloud } from 'lucide-react'
 import { useAuth, API_BASE } from '../context/AuthContext'
 import HighlightToolbar from '../components/HighlightToolbar'
 import Toast from '../components/Toast'
@@ -115,6 +115,7 @@ export default function ReadingPage() {
   const [bookPickerOpen, setBookPickerOpen] = useState(false)
   const [recentReads, setRecentReads] = useState([])
   const [isSpeaking, setIsSpeaking] = useState(false)
+  const [versionPickerOpen, setVersionPickerOpen] = useState(false)
 
   const bookSelectRef = useRef(null)
   const chapterSelectRef = useRef(null)
@@ -307,6 +308,13 @@ export default function ReadingPage() {
     setBookPickerOpen(false)
   }
 
+  const chooseVersion = (version) => {
+    const target = { ...activeTarget, version: version.id }
+    setSelection(target)
+    setActiveTarget(target)
+    setVersionPickerOpen(false)
+  }
+
   // 3. 選擇章 -> 立即載入該章，不再要求選節
   const handleChapterChange = (e) => {
     const val = e.target.value
@@ -477,12 +485,7 @@ export default function ReadingPage() {
         <button type="button" className="mobile-reader-book" onClick={() => setBookPickerOpen(true)}>
           {currentActiveBookName} {activeTarget.chapter}
         </button>
-        <button type="button" className="mobile-reader-version" onClick={() => {
-          const next = versions[(versions.findIndex(v => v.id === activeTarget.version) + 1) % versions.length]
-          const target = { ...activeTarget, version: next.id }
-          setSelection(target)
-          setActiveTarget(target)
-        }}>
+        <button type="button" className="mobile-reader-version" onClick={() => setVersionPickerOpen(true)}>
           {activeTarget.version}
         </button>
         <button type="button" className="mobile-reader-icon" onClick={toggleSpeech} aria-label="朗讀">
@@ -495,6 +498,29 @@ export default function ReadingPage() {
           <MoreHorizontal size={27} />
         </button>
       </div>
+
+      {versionPickerOpen && (
+        <div className="version-picker-backdrop" onClick={() => setVersionPickerOpen(false)}>
+          <section className="version-picker-sheet" onClick={e => e.stopPropagation()}>
+            <div className="version-picker-handle" />
+            <div className="version-picker-title-row">
+              <h2>我的譯本</h2>
+              <div><button type="button" aria-label="設定"><Settings size={27} /></button><button type="button" aria-label="新增譯本"><Plus size={30} /></button></div>
+            </div>
+            <div className="version-picker-list">
+              {versions.map(version => (
+                <button key={version.id} type="button" className={`version-picker-item ${version.id === activeTarget.version ? 'selected' : ''}`} onClick={() => chooseVersion(version)}>
+                  <span className="version-code">{version.id}<b>{version.id === 'CUNP' ? '神' : ''}</b></span>
+                  <span className="version-details"><small>{version.id === 'CCB' ? 'Biblica, Inc.' : 'Hong Kong Bible Society'}</small><strong>{version.id === 'CUNP' ? '新標點和合本, 神版' : version.name}</strong></span>
+                  <Cloud size={24} className="version-cloud" /><MoreHorizontal size={23} className="version-more" />
+                </button>
+              ))}
+            </div>
+            <button type="button" className="more-versions-btn" onClick={() => showToast('更多譯本功能即將推出', 'info')}>更多譯本</button>
+            <p className="version-picker-count">3,868 譯本 共 2,463 種語言</p>
+          </section>
+        </div>
+      )}
 
       <div className="app-container">
         <div className="header">
