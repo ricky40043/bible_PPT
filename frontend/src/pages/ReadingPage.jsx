@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
 import { useSearchParams } from 'react-router-dom'
-import { BookOpen, Copy, Highlighter } from 'lucide-react'
+import { BookOpen, Copy, Highlighter, Volume2, Search, MoreHorizontal, Play, Pause, ChevronLeft, ChevronRight, Home, CalendarCheck, User } from 'lucide-react'
 import { useAuth, API_BASE } from '../context/AuthContext'
 import HighlightToolbar from '../components/HighlightToolbar'
 import Toast from '../components/Toast'
@@ -94,6 +94,7 @@ export default function ReadingPage() {
   const [toastType, setToastType] = useState('success')
   const [bookPickerOpen, setBookPickerOpen] = useState(false)
   const [recentReads, setRecentReads] = useState([])
+  const [isSpeaking, setIsSpeaking] = useState(false)
 
   const bookSelectRef = useRef(null)
   const chapterSelectRef = useRef(null)
@@ -403,6 +404,24 @@ export default function ReadingPage() {
     showToast(`已複製 ${bookName} 第 ${activeTarget.chapter} 章全部經文！`)
   }
 
+  const toggleSpeech = () => {
+    if (!('speechSynthesis' in window) || !chapterContent.length) return
+    if (isSpeaking) {
+      window.speechSynthesis.cancel()
+      setIsSpeaking(false)
+      return
+    }
+    const text = chapterContent.map(v => `${v.num}。${v.text}`).join(' ')
+    const utterance = new SpeechSynthesisUtterance(text)
+    utterance.lang = 'zh-TW'
+    utterance.rate = 0.9
+    utterance.onend = () => setIsSpeaking(false)
+    utterance.onerror = () => setIsSpeaking(false)
+    window.speechSynthesis.cancel()
+    window.speechSynthesis.speak(utterance)
+    setIsSpeaking(true)
+  }
+
   const handleTouchStart = (e) => {
     touchStartX.current = e.touches[0].clientX
     touchStartY.current = e.touches[0].clientY
@@ -428,6 +447,29 @@ export default function ReadingPage() {
   return (
     <div className="reading-page-wrapper" onClick={() => setActiveVerseNum(null)}>
       <Toast message={toastMsg} type={toastType} onClose={() => setToastMsg(null)} />
+
+      <div className="mobile-reader-toolbar">
+        <button type="button" className="mobile-reader-book" onClick={() => setBookPickerOpen(true)}>
+          {currentActiveBookName} {activeTarget.chapter}
+        </button>
+        <button type="button" className="mobile-reader-version" onClick={() => {
+          const next = versions[(versions.findIndex(v => v.id === activeTarget.version) + 1) % versions.length]
+          const target = { ...activeTarget, version: next.id }
+          setSelection(target)
+          setActiveTarget(target)
+        }}>
+          {activeTarget.version}
+        </button>
+        <button type="button" className="mobile-reader-icon" onClick={toggleSpeech} aria-label="朗讀">
+          <Volume2 size={24} />
+        </button>
+        <button type="button" className="mobile-reader-icon" aria-label="搜尋" onClick={() => showToast('搜尋功能即將推出', 'info')}>
+          <Search size={27} />
+        </button>
+        <button type="button" className="mobile-reader-icon" aria-label="更多" onClick={() => showToast('點擊經文可標註或複製', 'info')}>
+          <MoreHorizontal size={27} />
+        </button>
+      </div>
 
       <div className="app-container">
         <div className="header">
@@ -639,6 +681,21 @@ export default function ReadingPage() {
           >
             下一章 →
           </button>
+        </div>
+
+        <div className="mobile-reader-controls">
+          <button type="button" onClick={handlePrevChapter} disabled={parseInt(activeTarget.chapter) <= 1} aria-label="上一章"><ChevronLeft size={34} /></button>
+          <button type="button" className="mobile-reader-play" onClick={toggleSpeech} disabled={!chapterContent.length} aria-label={isSpeaking ? '停止朗讀' : '朗讀'}>
+            {isSpeaking ? <Pause size={28} fill="currentColor" /> : <Play size={28} fill="currentColor" />}
+          </button>
+          <button type="button" onClick={handleNextChapter} disabled={parseInt(activeTarget.chapter) >= (books.find(b => b.id === activeTarget.book)?.chapters || 50)} aria-label="下一章"><ChevronRight size={34} /></button>
+        </div>
+        <div className="mobile-reader-tabbar">
+          <span><Home size={22} />首頁</span>
+          <span className="active"><BookOpen size={22} />聖經</span>
+          <span><CalendarCheck size={22} />計畫</span>
+          <span><Search size={22} />發掘</span>
+          <span><User size={22} />你</span>
         </div>
       </div>
     </div>
