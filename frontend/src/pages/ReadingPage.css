@@ -47,6 +47,80 @@
   gap: 0.75rem;
 }
 
+.book-picker-trigger {
+  display: none;
+  align-items: center;
+  gap: 8px;
+  border: 1px solid rgba(255,255,255,.12);
+  border-radius: 10px;
+  background: rgba(255,255,255,.06);
+  color: #f8fafc;
+  padding: 10px 12px;
+  font-size: .95rem;
+  cursor: pointer;
+  text-align: left;
+}
+.book-picker-trigger-label { color: #94a3b8; font-size: .78rem; }
+.book-picker-chevron { margin-left: auto; color: #94a3b8; font-size: 1.35rem; line-height: .7; }
+
+.book-picker-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 300;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  background: rgba(0,0,0,.58);
+  backdrop-filter: blur(8px);
+}
+.book-picker-sheet {
+  width: min(640px, 100%);
+  max-height: min(88vh, 760px);
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  background: #121212;
+  color: #f5f5f5;
+  border: 1px solid rgba(255,255,255,.12);
+  border-radius: 24px 24px 0 0;
+  box-shadow: 0 -20px 60px rgba(0,0,0,.45);
+}
+.book-picker-header {
+  display: grid;
+  grid-template-columns: 44px 1fr 44px;
+  align-items: center;
+  padding: 18px 20px 12px;
+  border-bottom: 1px solid rgba(255,255,255,.08);
+}
+.book-picker-header h2 { margin: 0; text-align: center; font-size: 1.2rem; }
+.book-picker-close, .book-picker-more {
+  width: 38px; height: 38px; border-radius: 50%;
+  display: grid; place-items: center;
+  color: #fff; background: rgba(255,255,255,.09);
+  border: 1px solid rgba(255,255,255,.12);
+  font-size: 1.8rem; line-height: 1; cursor: pointer;
+}
+.book-picker-more { justify-self: end; font-size: 1rem; letter-spacing: 2px; }
+.book-picker-list { overflow-y: auto; padding: 10px 0 14px; }
+.book-picker-section-title {
+  padding: 12px 24px 8px; color: #9ca3af; font-size: .78rem;
+  text-transform: uppercase; letter-spacing: .12em;
+}
+.book-picker-item {
+  display: block; width: 100%; padding: 13px 24px; text-align: left;
+  border: 0; background: transparent; color: #f3f4f6;
+  font-size: 1.12rem; cursor: pointer;
+}
+.book-picker-item:hover, .book-picker-item.selected { background: #403b3b; }
+.book-picker-recent { padding: 14px 20px 22px; border-top: 1px solid rgba(255,255,255,.1); background: #111; }
+.book-picker-recent h3 { margin: 0 0 12px; font-size: 1rem; }
+.book-picker-recent h3 span { color: #a1a1aa; font-size: 1.4rem; vertical-align: -1px; }
+.recent-read-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; }
+.recent-read-card { padding: 12px 14px; border: 0; border-radius: 14px; background: #252323; color: #f5f5f5; text-align: left; cursor: pointer; }
+.recent-read-card strong, .recent-read-card small { display: block; }
+.recent-read-card strong { font-size: .98rem; }
+.recent-read-card small { margin-top: 3px; color: #a1a1aa; }
+
 .reading-selector-bar {
   display: flex;
   gap: 1rem;
@@ -276,6 +350,9 @@
 }
 
 @media (max-width: 600px) {
+  .reading-page-wrapper { min-height: calc(100vh - 64px); padding-bottom: 0; }
+  .reading-page-wrapper .app-container { width: 100%; margin: 0; padding: 1rem .8rem 1.5rem; border: 0; border-radius: 0; background: rgba(15,23,42,.55); }
+  .reading-page-wrapper .header p { font-size: .85rem; }
   .reading-selector-card {
     padding: 0.85rem;
   }
@@ -285,13 +362,18 @@
     gap: 0.75rem;
   }
   .reading-select-group:nth-child(1) { grid-column: 1; grid-row: 1; }
-  .reading-select-group:nth-child(2) { grid-column: 2; grid-row: 1; }
-  .reading-select-group.reading-select-small:nth-child(3) { grid-column: 1; grid-row: 2; flex: unset; }
-  .reading-select-group.reading-select-small:nth-child(4) { grid-column: 2; grid-row: 2; flex: unset; }
+  .book-select-group { display: none; }
+  .book-picker-trigger { display: flex; grid-column: 2; grid-row: 1; }
+  .reading-select-group.reading-select-small { grid-column: 1 / -1; grid-row: 2; flex: unset; }
+  .reading-select-group.reading-select-small label { display: none; }
+  .reading-select-group.reading-select-small select { font-size: 1.05rem; padding: 12px; }
   .reading-content {
     padding: 1.2rem;
   }
   .verse-text {
     font-size: 1.02rem;
   }
+  .reading-chapter-nav { padding: .65rem .8rem; }
+  .reading-nav-btn { padding: .42rem .65rem; font-size: .8rem; }
+  .reading-chapter-title { font-size: .9rem; }
 }

@@ -92,6 +92,8 @@ export default function ReadingPage() {
   const [activeVerseNum, setActiveVerseNum] = useState(null)
   const [toastMsg, setToastMsg] = useState(null)
   const [toastType, setToastType] = useState('success')
+  const [bookPickerOpen, setBookPickerOpen] = useState(false)
+  const [recentReads, setRecentReads] = useState([])
 
   const bookSelectRef = useRef(null)
   const chapterSelectRef = useRef(null)
@@ -100,6 +102,15 @@ export default function ReadingPage() {
   const touchStartX = useRef(null)
   const touchStartY = useRef(null)
   const isInitialProgressLoaded = useRef(false)
+
+  useEffect(() => {
+    try {
+      const saved = JSON.parse(localStorage.getItem('bible_recent_reads') || '[]')
+      setRecentReads(Array.isArray(saved) ? saved : [])
+    } catch (e) {
+      setRecentReads([])
+    }
+  }, [])
 
   // 計算選中書卷的總章數
   const selectedBookInfo = books.find(b => b.id === selection.book)
@@ -163,9 +174,10 @@ export default function ReadingPage() {
       setChapterContent(cachedData)
       setLoading(false)
       setError(null)
-      fetchHighlights(activeTarget.version, activeTarget.book, activeTarget.chapter)
-      saveProgress(activeTarget.version, activeTarget.book, parseInt(activeTarget.chapter), parseInt(activeTarget.verse || 1))
-      return
+        fetchHighlights(activeTarget.version, activeTarget.book, activeTarget.chapter)
+        saveProgress(activeTarget.version, activeTarget.book, parseInt(activeTarget.chapter), parseInt(activeTarget.verse || 1))
+        rememberRecentRead(activeTarget)
+        return
     }
 
     const abortCtrl = new AbortController()
@@ -187,6 +199,7 @@ export default function ReadingPage() {
         setChapterContent(data)
         fetchHighlights(activeTarget.version, activeTarget.book, activeTarget.chapter)
         saveProgress(activeTarget.version, activeTarget.book, parseInt(activeTarget.chapter), parseInt(activeTarget.verse || 1))
+        rememberRecentRead(activeTarget)
       } catch (err) {
         if (err.name !== 'AbortError') {
           console.error(err)
@@ -203,6 +216,15 @@ export default function ReadingPage() {
       abortCtrl.abort()
     }
   }, [activeTarget, fetchHighlights])
+
+  const rememberRecentRead = (target) => {
+    const item = { version: target.version, book: target.book, chapter: String(target.chapter) }
+    setRecentReads(prev => {
+      const next = [item, ...prev.filter(r => !(r.version === item.version && r.book === item.book && r.chapter === item.chapter))].slice(0, 6)
+      localStorage.setItem('bible_recent_reads', JSON.stringify(next))
+      return next
+    })
+  }
 
   // 每次切換書卷或章節，都從頁面最上方開始閱讀。
   // 在內容載入完成後再執行，避免瀏覽器在 React 重新渲染後恢復舊捲動位置。
@@ -244,6 +266,19 @@ export default function ReadingPage() {
     setTimeout(() => {
       chapterSelectRef.current?.focus()
     }, 50)
+  }
+
+  const chooseBook = (bookId) => {
+    setSelection(prev => ({ ...prev, book: bookId, chapter: '', verse: '1' }))
+    setBookPickerOpen(false)
+    setTimeout(() => chapterSelectRef.current?.focus(), 50)
+  }
+
+  const openRecentRead = (item) => {
+    const target = { version: item.version, book: item.book, chapter: item.chapter, verse: '1' }
+    setSelection(target)
+    setActiveTarget(target)
+    setBookPickerOpen(false)
   }
 
   // 3. 選擇章 -> 立即載入該章，不再要求選節
@@ -404,7 +439,7 @@ export default function ReadingPage() {
               </button>
             )}
           </div>
-          <p>依序選好版本、書卷、章、節後直接跳轉；點擊經文可<b>畫線</b>或<b>複製</b></p>
+          <p>選好版本、書卷與章後立即開始閱讀；點擊經文可<b>畫線</b>或<b>複製</b></p>
         </div>
 
         {error && <div className="error-msg">{error}</div>}
@@ -423,7 +458,13 @@ export default function ReadingPage() {
               </select>
             </div>
 
-            <div className="reading-select-group">
+            <button className="book-picker-trigger" type="button" onClick={() => setBookPickerOpen(true)}>
+              <span className="book-picker-trigger-label">書卷</span>
+              <span>{books.find(b => b.id === selection.book)?.name || '選擇書卷'}</span>
+              <span className="book-picker-chevron">›</span>
+            </button>
+
+            <div className="reading-select-group book-select-group">
               <label>2. 書卷</label>
               <select
                 ref={bookSelectRef}
@@ -451,6 +492,47 @@ export default function ReadingPage() {
             </div>
           </div>
         </div>
+
+        {bookPickerOpen && (
+          <div className="book-picker-backdrop" onClick={() => setBookPickerOpen(false)}>
+            <section className="book-picker-sheet" onClick={e => e.stopPropagation()}>
+              <div className="book-picker-header">
+                <button type="button" className="book-picker-close" onClick={() => setBookPickerOpen(false)}>×</button>
+                <h2>書卷</h2>
+                <span className="book-picker-more">•••</span>
+              </div>
+              <div className="book-picker-list">
+                <div className="book-picker-section-title">舊約</div>
+                {books.slice(0, 39).map(book => (
+                  <button key={book.id} type="button" className={`book-picker-item ${selection.book === book.id ? 'selected' : ''}`} onClick={() => chooseBook(book.id)}>
+                    {book.name}
+                  </button>
+                ))}
+                <div className="book-picker-section-title">新約</div>
+                {books.slice(39).map(book => (
+                  <button key={book.id} type="button" className={`book-picker-item ${selection.book === book.id ? 'selected' : ''}`} onClick={() => chooseBook(book.id)}>
+                    {book.name}
+                  </button>
+                ))}
+              </div>
+              {recentReads.length > 0 && (
+                <div className="book-picker-recent">
+                  <h3>最近使用 <span>›</span></h3>
+                  <div className="recent-read-grid">
+                    {recentReads.slice(0, 4).map(item => {
+                      const book = books.find(b => b.id === item.book)
+                      const version = versions.find(v => v.id === item.version)
+                      return <button key={`${item.version}-${item.book}-${item.chapter}`} type="button" className="recent-read-card" onClick={() => openRecentRead(item)}>
+                        <strong>{book?.name || item.book} {item.chapter}</strong>
+                        <small>{version?.name || item.version}</small>
+                      </button>
+                    })}
+                  </div>
+                </div>
+              )}
+            </section>
+          </div>
+        )}
 
         {/* 章節導航 */}
         <div className="reading-chapter-nav">
