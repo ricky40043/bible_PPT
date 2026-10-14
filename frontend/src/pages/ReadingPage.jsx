@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
 import { useSearchParams } from 'react-router-dom'
-import { BookOpen, Copy, Highlighter, ArrowRight } from 'lucide-react'
+import { BookOpen, Copy, Highlighter } from 'lucide-react'
 import { useAuth, API_BASE } from '../context/AuthContext'
 import HighlightToolbar from '../components/HighlightToolbar'
 import Toast from '../components/Toast'
@@ -95,7 +95,6 @@ export default function ReadingPage() {
 
   const bookSelectRef = useRef(null)
   const chapterSelectRef = useRef(null)
-  const verseSelectRef = useRef(null)
 
   const contentRef = useRef(null)
   const touchStartX = useRef(null)
@@ -238,32 +237,23 @@ export default function ReadingPage() {
     }, 50)
   }
 
-  // 2. 選擇書卷 -> 自動跳往下一個「章」選單（不滾動頁面、不發動跳轉）
+  // 2. 選擇書卷 -> 自動跳往「章」選單（選完章才開始載入）
   const handleBookChange = (e) => {
     const val = e.target.value
-    setSelection(prev => ({ ...prev, book: val, chapter: '1', verse: '1' }))
+    setSelection(prev => ({ ...prev, book: val, chapter: '', verse: '1' }))
     setTimeout(() => {
       chapterSelectRef.current?.focus()
     }, 50)
   }
 
-  // 3. 選擇章 -> 自動跳往下一個「節」選單（不滾動頁面、不發動跳轉）
+  // 3. 選擇章 -> 立即載入該章，不再要求選節
   const handleChapterChange = (e) => {
     const val = e.target.value
     setSelection(prev => ({ ...prev, chapter: val, verse: '1' }))
-    setTimeout(() => {
-      verseSelectRef.current?.focus()
-    }, 50)
+    triggerJump({ ...selection, chapter: val, verse: '1' })
   }
 
-  // 4. 選擇節 -> 選完節（或點擊前往）後，正式跳轉並載入經文！
-  const handleVerseChange = (e) => {
-    const val = e.target.value
-    setSelection(prev => ({ ...prev, verse: val }))
-    triggerJump({ ...selection, verse: val })
-  }
-
-  // 執行跳轉（版本、書卷、章、節全部確認）
+  // 執行跳轉（版本、書卷、章確認後載入整章）
   const triggerJump = (targetObj = selection) => {
     setActiveTarget({ ...targetObj })
     saveProgress(targetObj.version, targetObj.book, parseInt(targetObj.chapter), parseInt(targetObj.verse || 1))
@@ -400,8 +390,6 @@ export default function ReadingPage() {
   const currentActiveBookName = books.find(b => b.id === activeTarget.book)?.name || activeTarget.book
   const currentActiveVersionName = versions.find(v => v.id === activeTarget.version)?.name || activeTarget.version
 
-  const isSelectionChanged = selection.version !== activeTarget.version || selection.book !== activeTarget.book || selection.chapter !== activeTarget.chapter || selection.verse !== activeTarget.verse
-
   return (
     <div className="reading-page-wrapper" onClick={() => setActiveVerseNum(null)}>
       <Toast message={toastMsg} type={toastType} onClose={() => setToastMsg(null)} />
@@ -455,34 +443,13 @@ export default function ReadingPage() {
                 value={selection.chapter}
                 onChange={handleChapterChange}
               >
+                <option value="" disabled>請選擇章</option>
                 {Array.from({ length: totalChapters }, (_, i) => i + 1).map(num => (
                   <option key={num} value={num}>{num}</option>
                 ))}
               </select>
             </div>
-
-            <div className="reading-select-group reading-select-small">
-              <label>4. 節 (選完跳轉)</label>
-              <select
-                ref={verseSelectRef}
-                className="form-control"
-                value={selection.verse}
-                onChange={handleVerseChange}
-              >
-                {Array.from({ length: 60 }, (_, i) => i + 1).map(num => (
-                  <option key={num} value={num}>{num}</option>
-                ))}
-              </select>
-            </div>
           </div>
-
-          {/* 前往跳轉按鈕 */}
-          {isSelectionChanged && (
-            <button className="jump-now-btn" onClick={() => triggerJump(selection)}>
-              <span>跳轉至 {books.find(b => b.id === selection.book)?.name} {selection.chapter} 章</span>
-              <ArrowRight size={16} />
-            </button>
-          )}
         </div>
 
         {/* 章節導航 */}
