@@ -50,8 +50,7 @@ export const BIBLE_VERSIONS = [
 
 const memoryVerseCache = new Map()
 
-function BookPickerItem({ book, selection, onChooseBook, onChooseChapter }) {
-  const expanded = selection.book === book.id
+function BookPickerItem({ book, selection, expanded, onChooseBook, onChooseChapter }) {
   return (
     <div className={`book-picker-book-group ${expanded ? 'expanded' : ''}`}>
       <button type="button" className={`book-picker-item ${expanded ? 'selected' : ''}`} onClick={() => onChooseBook(book.id)}>
@@ -60,7 +59,7 @@ function BookPickerItem({ book, selection, onChooseBook, onChooseChapter }) {
       {expanded && (
         <div className="chapter-picker-grid">
           {Array.from({ length: book.chapters }, (_, i) => i + 1).map(chapter => (
-            <button key={chapter} type="button" className={String(selection.chapter) === String(chapter) ? 'selected' : ''} onClick={() => onChooseChapter(book.id, chapter)}>
+            <button key={chapter} type="button" className={selection.book === book.id && String(selection.chapter) === String(chapter) ? 'selected' : ''} onClick={() => onChooseChapter(book.id, chapter)}>
               {chapter}
             </button>
           ))}
@@ -116,6 +115,8 @@ export default function ReadingPage() {
   const [recentReads, setRecentReads] = useState([])
   const [isSpeaking, setIsSpeaking] = useState(false)
   const [versionPickerOpen, setVersionPickerOpen] = useState(false)
+  // 書卷選單中展開章節格的書卷（null = 全部收合）
+  const [expandedBook, setExpandedBook] = useState(null)
 
   const bookSelectRef = useRef(null)
   const chapterSelectRef = useRef(null)
@@ -270,14 +271,18 @@ export default function ReadingPage() {
     }
   }, [activeTarget.version, activeTarget.book, activeTarget.chapter, loading])
 
-  // 書卷選單打開或切換書卷時，把展開中的書卷捲到最上方，直接看到章節格
+  // 打開書卷選單時展開目前閱讀的書卷，並捲到它的位置；之後點書卷只展開/收合，不再自動捲動
+  const openBookPicker = () => {
+    setExpandedBook(activeTarget.book)
+    setBookPickerOpen(true)
+  }
   useEffect(() => {
     if (!bookPickerOpen) return
     const frame = window.requestAnimationFrame(() => {
       document.querySelector('.book-picker-book-group.expanded')?.scrollIntoView({ block: 'start' })
     })
     return () => window.cancelAnimationFrame(frame)
-  }, [bookPickerOpen, selection.book])
+  }, [bookPickerOpen])
 
   // ─────────────────────────── 手機/桌面 連鎖選經流程 ───────────────────────────
 
@@ -300,8 +305,9 @@ export default function ReadingPage() {
   }
 
   const chooseBook = (bookId) => {
-    setSelection(prev => ({ ...prev, book: bookId, chapter: prev.book === bookId ? prev.chapter : '1', verse: '1' }))
+    setExpandedBook(prev => prev === bookId ? null : bookId)
   }
+
 
   const choosePickerChapter = (bookId, chapter) => {
     const target = { version: selection.version, book: bookId, chapter: String(chapter), verse: '1' }
@@ -497,7 +503,7 @@ export default function ReadingPage() {
       <Toast message={toastMsg} type={toastType} onClose={() => setToastMsg(null)} />
 
       <div className="mobile-reader-toolbar">
-        <button type="button" className="mobile-reader-book" onClick={() => setBookPickerOpen(true)}>
+        <button type="button" className="mobile-reader-book" onClick={openBookPicker}>
           {currentActiveBookName} {activeTarget.chapter}
         </button>
         <span className="mobile-reader-divider" aria-hidden="true" />
@@ -567,7 +573,7 @@ export default function ReadingPage() {
               </select>
             </div>
 
-            <button className="book-picker-trigger" type="button" onClick={() => setBookPickerOpen(true)}>
+            <button className="book-picker-trigger" type="button" onClick={openBookPicker}>
               <span className="book-picker-trigger-label">書卷</span>
               <span>{books.find(b => b.id === selection.book)?.name || '選擇書卷'}</span>
               <span className="book-picker-chevron">›</span>
@@ -612,9 +618,9 @@ export default function ReadingPage() {
               </div>
               <div className="book-picker-list">
                 <div className="book-picker-section-title">舊約</div>
-                {books.slice(0, 39).map(book => <BookPickerItem key={book.id} book={book} selection={selection} onChooseBook={chooseBook} onChooseChapter={choosePickerChapter} />)}
+                {books.slice(0, 39).map(book => <BookPickerItem key={book.id} book={book} selection={selection} expanded={expandedBook === book.id} onChooseBook={chooseBook} onChooseChapter={choosePickerChapter} />)}
                 <div className="book-picker-section-title">新約</div>
-                {books.slice(39).map(book => <BookPickerItem key={book.id} book={book} selection={selection} onChooseBook={chooseBook} onChooseChapter={choosePickerChapter} />)}
+                {books.slice(39).map(book => <BookPickerItem key={book.id} book={book} selection={selection} expanded={expandedBook === book.id} onChooseBook={chooseBook} onChooseChapter={choosePickerChapter} />)}
               </div>
               {recentReads.length > 0 && (
                 <div className="book-picker-recent">
