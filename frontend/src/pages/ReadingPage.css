@@ -227,9 +227,9 @@
   transform: translateY(-1px);
 }
 
+/* 已在聖經最前或最後時隱藏按鈕（保留位置讓標題置中） */
 .reading-nav-btn:disabled {
-  opacity: 0.3;
-  cursor: not-allowed;
+  visibility: hidden;
 }
 
 /* Content Area */
@@ -398,14 +398,14 @@
   .reading-book-title { display: block; font-size: 1.45rem; line-height: 1.4; }
   .reading-version-tag, .reading-tips { display: none; }
 
-  /* 經文改成段落連續排版，節號以上標方式嵌在文字中 */
-  .reading-verses { display: block; font-size: 1.42rem; line-height: 2; letter-spacing: .02em; color: #f1f1f1; text-align: justify; }
-  .verse-item, .verse-item:hover { display: inline; position: relative; padding: 0; gap: 0; border: 0; border-radius: 0; background: transparent; box-shadow: none; }
+  /* 一節一段，節號以上標方式放在每節開頭 */
+  .reading-verses { display: flex; flex-direction: column; gap: .45rem; font-size: 1.42rem; line-height: 2; letter-spacing: .02em; color: #f1f1f1; }
+  .verse-item, .verse-item:hover { display: block; position: relative; padding: 0; gap: 0; border: 0; border-radius: 0; background: transparent; box-shadow: none; }
   .verse-num {
     display: inline; min-width: 0; margin: 0 .3em 0 .45em; font-size: .5em; font-weight: 500;
     color: #b8b8b8; vertical-align: .9em; line-height: 0; text-align: left;
   }
-  .verse-item:first-child .verse-num { margin-left: 0; }
+  .verse-num { margin-left: 0; }
   .verse-text { font-size: inherit; line-height: inherit; letter-spacing: inherit; color: inherit; }
   .verse-item.highlighted { background: transparent; border: 0; box-shadow: none; }
   .verse-item.highlighted .verse-text, .verse-item.highlighted .verse-num {
@@ -428,6 +428,7 @@
   }
   .mobile-reader-controls button { pointer-events: auto; display: grid; place-items: center; width: 52px; height: 52px; border: 0; border-radius: 50%; background: rgba(74,72,73,.94); color: #fff; box-shadow: 0 4px 14px rgba(0,0,0,.35); cursor: pointer; }
   .mobile-reader-controls button:disabled { opacity: .3; }
+  .mobile-reader-spacer { width: 52px; height: 52px; }
   .mobile-reader-controls .mobile-reader-play { width: 68px; height: 68px; }
   .reading-selector-card {
     padding: 0.85rem;

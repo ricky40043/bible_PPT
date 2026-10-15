@@ -344,25 +344,31 @@ export default function ReadingPage() {
     }
   }
 
-  // 上一章 / 下一章切換
-  const handlePrevChapter = () => {
-    const prevChap = (parseInt(activeTarget.chapter) - 1).toString()
-    if (parseInt(prevChap) >= 1) {
-      const nextTarget = { ...activeTarget, chapter: prevChap, verse: '1' }
-      setSelection(nextTarget)
-      setActiveTarget(nextTarget)
-    }
+  // 上一章 / 下一章切換：章節到底時接續上一卷或下一卷，只有創世記 1 章與啟示錄 22 章沒有前後章
+  const activeBookIndex = books.findIndex(b => b.id === activeTarget.book)
+  const activeChapterNum = parseInt(activeTarget.chapter) || 1
+  const getPrevTarget = () => {
+    if (activeChapterNum > 1) return { book: activeTarget.book, chapter: String(activeChapterNum - 1) }
+    const prevBook = books[activeBookIndex - 1]
+    return activeBookIndex > 0 && prevBook ? { book: prevBook.id, chapter: String(prevBook.chapters) } : null
   }
+  const getNextTarget = () => {
+    const activeBookTotal = books[activeBookIndex]?.chapters || 50
+    if (activeChapterNum < activeBookTotal) return { book: activeTarget.book, chapter: String(activeChapterNum + 1) }
+    const nextBook = books[activeBookIndex + 1]
+    return activeBookIndex >= 0 && nextBook ? { book: nextBook.id, chapter: '1' } : null
+  }
+  const prevTarget = getPrevTarget()
+  const nextTarget = getNextTarget()
 
-  const handleNextChapter = () => {
-    const activeBookTotal = books.find(b => b.id === activeTarget.book)?.chapters || 50
-    const nextChap = (parseInt(activeTarget.chapter) + 1).toString()
-    if (parseInt(nextChap) <= activeBookTotal) {
-      const nextTarget = { ...activeTarget, chapter: nextChap, verse: '1' }
-      setSelection(nextTarget)
-      setActiveTarget(nextTarget)
-    }
+  const goToChapter = (target) => {
+    if (!target) return
+    const nextActive = { ...activeTarget, ...target, verse: '1' }
+    setSelection(nextActive)
+    setActiveTarget(nextActive)
   }
+  const handlePrevChapter = () => goToChapter(prevTarget)
+  const handleNextChapter = () => goToChapter(nextTarget)
 
   // ─────────────────────────── 畫線標註（存入 SQLite 資料庫，未登入禁止） ───────────────────────────
   const handleSelectHighlightColor = async (verseNum, color) => {
@@ -633,7 +639,7 @@ export default function ReadingPage() {
         <div className="reading-chapter-nav">
           <button
             className="reading-nav-btn"
-            disabled={parseInt(activeTarget.chapter) <= 1}
+            disabled={!prevTarget}
             onClick={handlePrevChapter}
           >
             ← 上一章
@@ -643,7 +649,7 @@ export default function ReadingPage() {
           </span>
           <button
             className="reading-nav-btn"
-            disabled={parseInt(activeTarget.chapter) >= (books.find(b => b.id === activeTarget.book)?.chapters || 50)}
+            disabled={!nextTarget}
             onClick={handleNextChapter}
           >
             下一章 →
@@ -719,7 +725,7 @@ export default function ReadingPage() {
         <div className="reading-chapter-nav reading-chapter-nav-bottom">
           <button
             className="reading-nav-btn"
-            disabled={parseInt(activeTarget.chapter) <= 1}
+            disabled={!prevTarget}
             onClick={handlePrevChapter}
           >
             ← 上一章
@@ -729,7 +735,7 @@ export default function ReadingPage() {
           </span>
           <button
             className="reading-nav-btn"
-            disabled={parseInt(activeTarget.chapter) >= (books.find(b => b.id === activeTarget.book)?.chapters || 50)}
+            disabled={!nextTarget}
             onClick={handleNextChapter}
           >
             下一章 →
@@ -737,11 +743,11 @@ export default function ReadingPage() {
         </div>
 
         <div className="mobile-reader-controls">
-          <button type="button" onClick={handlePrevChapter} disabled={parseInt(activeTarget.chapter) <= 1} aria-label="上一章"><ChevronLeft size={34} /></button>
+          {prevTarget ? <button type="button" onClick={handlePrevChapter} aria-label="上一章"><ChevronLeft size={34} /></button> : <span className="mobile-reader-spacer" />}
           <button type="button" className="mobile-reader-play" onClick={toggleSpeech} disabled={!chapterContent.length} aria-label={isSpeaking ? '停止朗讀' : '朗讀'}>
             {isSpeaking ? <Pause size={28} fill="currentColor" /> : <Play size={28} fill="currentColor" />}
           </button>
-          <button type="button" onClick={handleNextChapter} disabled={parseInt(activeTarget.chapter) >= (books.find(b => b.id === activeTarget.book)?.chapters || 50)} aria-label="下一章"><ChevronRight size={34} /></button>
+          {nextTarget ? <button type="button" onClick={handleNextChapter} aria-label="下一章"><ChevronRight size={34} /></button> : <span className="mobile-reader-spacer" />}
         </div>
       </div>
     </div>
