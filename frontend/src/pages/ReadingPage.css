@@ -6,7 +6,7 @@
   padding-bottom: 2rem;
 }
 
-.mobile-reader-toolbar, .mobile-reader-controls, .mobile-reader-tabbar { display: none; }
+.mobile-reader-toolbar, .mobile-reader-controls, .mobile-reader-divider { display: none; }
 .version-picker-backdrop { display: none; }
 
 .header-title-row {
@@ -103,7 +103,8 @@
   border: 1px solid rgba(255,255,255,.12);
   font-size: 1.8rem; line-height: 1; cursor: pointer;
 }
-.book-picker-more { justify-self: end; font-size: 1rem; letter-spacing: 2px; }
+.book-picker-more { justify-self: end; }
+.book-picker-book-group { scroll-margin-top: 4px; }
 .book-picker-list { overflow-y: auto; padding: 10px 0 14px; }
 .book-picker-section-title {
   padding: 12px 24px 8px; color: #9ca3af; font-size: .78rem;
@@ -364,52 +365,70 @@
 }
 
 @media (max-width: 600px) {
-  .reading-page-wrapper { min-height: calc(100vh - 64px); padding-bottom: 0; }
-  .reading-page-wrapper .app-container { width: 100%; margin: 0; padding: 1rem .8rem 1.5rem; border: 0; border-radius: 0; background: rgba(15,23,42,.55); }
+  /* 手機讀經：上下堆疊，不能沿用桌面的橫向 flex，否則工具列和經文會被擠成左右兩欄 */
+  .reading-page-wrapper { display: block; min-height: calc(100vh - 64px); padding-bottom: 0; }
+  /* backdrop-filter / transform 會讓 position: fixed 改成相對容器定位，浮動按鈕會跑到內容最底部 */
+  .reading-page-wrapper .app-container {
+    width: 100%; max-width: none; margin: 0; padding: 0 1.25rem; box-sizing: border-box;
+    border: 0; border-radius: 0; background: #121212; box-shadow: none;
+    backdrop-filter: none; transform: none !important;
+  }
   .reading-page-wrapper .header, .reading-page-wrapper .reading-selector-card,
-  .reading-page-wrapper > .app-container > .reading-chapter-nav { display: none; }
+  .reading-page-wrapper .reading-chapter-nav { display: none; }
   .mobile-reader-toolbar {
-    position: sticky; top: 0; z-index: 80;
-    display: flex; align-items: center; gap: 4px;
-    margin: -1rem -.8rem 0; padding: 1.1rem .7rem .75rem;
-    background: rgba(18,18,18,.96); border-bottom: 1px solid rgba(255,255,255,.1);
+    position: sticky; top: 53px; z-index: 80;
+    display: flex; align-items: center; gap: 2px;
+    margin: 0; padding: .6rem 1rem .6rem 1.25rem;
+    background: rgba(18,18,18,.97); border-bottom: 1px solid rgba(255,255,255,.08);
   }
   .mobile-reader-book, .mobile-reader-version {
-    height: 40px; border: 0; color: #f5f5f5; background: #2d2b2c;
-    font-weight: 600; font-size: .96rem; cursor: pointer;
+    height: 38px; padding: 0; border: 0; background: transparent; color: #f5f5f5;
+    font-weight: 700; font-size: 1.05rem; white-space: nowrap; cursor: pointer;
   }
-  .mobile-reader-book { padding: 0 14px; border-radius: 22px 0 0 22px; margin-left: 4px; }
-  .mobile-reader-version { padding: 0 14px; border-radius: 0 22px 22px 0; margin-right: auto; }
-  .mobile-reader-icon { display: grid; place-items: center; width: 38px; height: 40px; border: 0; background: transparent; color: #f5f5f5; cursor: pointer; }
+  .mobile-reader-divider { display: block; width: 1px; height: 20px; margin: 0 12px; background: rgba(255,255,255,.4); }
+  .mobile-reader-version { margin-right: auto; }
+  .mobile-reader-icon { display: grid; place-items: center; width: 38px; height: 38px; border: 0; background: transparent; color: #f5f5f5; cursor: pointer; }
   .reading-content {
-    min-height: calc(100vh - 160px); padding: 1.4rem .65rem 9rem;
-    background: #121212; border: 0; border-radius: 0; box-shadow: none;
+    min-height: calc(100vh - 160px); padding: 1.25rem 0 8.5rem;
+    background: transparent; border: 0; border-radius: 0; box-shadow: none;
+    backdrop-filter: none;
   }
-  .reading-header-bar { display: block; margin: 0 0 1.25rem; padding: 0; border: 0; }
+  .reading-header-bar { display: block; margin: 0 0 1rem; padding: 0; border: 0; }
   .reading-title-wrap { display: block; }
-  .reading-book-title { display: block; font-size: 1.8rem; line-height: 1.3; }
+  .reading-book-title { display: block; font-size: 1.45rem; line-height: 1.4; }
   .reading-version-tag, .reading-tips { display: none; }
-  .reading-verses { gap: .15rem; }
-  .verse-item { gap: .55rem; padding: .3rem 0; border-radius: 0; align-items: baseline; }
-  .verse-num { min-width: 20px; font-size: .72rem; color: #b8b8b8; }
-  .verse-text { font-size: 1.48rem; line-height: 1.78; letter-spacing: .01em; color: #f1f1f1; }
+
+  /* 經文改成段落連續排版，節號以上標方式嵌在文字中 */
+  .reading-verses { display: block; font-size: 1.42rem; line-height: 2; letter-spacing: .02em; color: #f1f1f1; text-align: justify; }
+  .verse-item, .verse-item:hover { display: inline; position: relative; padding: 0; gap: 0; border: 0; border-radius: 0; background: transparent; box-shadow: none; }
+  .verse-num {
+    display: inline; min-width: 0; margin: 0 .3em 0 .45em; font-size: .5em; font-weight: 500;
+    color: #b8b8b8; vertical-align: .9em; line-height: 0; text-align: left;
+  }
+  .verse-item:first-child .verse-num { margin-left: 0; }
+  .verse-text { font-size: inherit; line-height: inherit; letter-spacing: inherit; color: inherit; }
+  .verse-item.highlighted { background: transparent; border: 0; box-shadow: none; }
+  .verse-item.highlighted .verse-text, .verse-item.highlighted .verse-num {
+    background: var(--hl-bg); color: #111; -webkit-box-decoration-break: clone; box-decoration-break: clone;
+  }
+  .verse-item.highlighted .verse-num { padding: 0 .3em; margin-right: 0; }
+  .verse-item.active-toolbar-verse { background: transparent !important; box-shadow: none; }
+  .verse-item.active-toolbar-verse .verse-text { text-decoration: underline dashed rgba(255,255,255,.65); text-underline-offset: .3em; }
+  .verse-item.highlighted.active-toolbar-verse .verse-text { text-decoration-color: rgba(0,0,0,.55); }
+  /* 標註工具列固定在畫面下方，避免在段落中定位錯亂 */
+  .verse-item .highlight-toolbar {
+    position: fixed; top: auto; left: 12px; right: 12px; bottom: calc(110px + env(safe-area-inset-bottom, 0px));
+    justify-content: center; font-size: 1rem; line-height: 1.2; letter-spacing: normal; white-space: normal; flex-wrap: wrap;
+  }
+
   .mobile-reader-controls {
-    position: fixed; left: 0; right: 0; bottom: 70px; z-index: 90;
-    display: flex; justify-content: space-between; align-items: center; padding: 0 3.2rem;
+    position: fixed; left: 0; right: 0; bottom: calc(22px + env(safe-area-inset-bottom, 0px)); z-index: 90;
+    display: flex; justify-content: space-between; align-items: center; padding: 0 1.75rem;
     pointer-events: none;
   }
-  .mobile-reader-controls button { pointer-events: auto; display: grid; place-items: center; width: 58px; height: 58px; border: 0; border-radius: 50%; background: rgba(74,72,73,.94); color: #fff; box-shadow: 0 4px 14px rgba(0,0,0,.3); cursor: pointer; }
+  .mobile-reader-controls button { pointer-events: auto; display: grid; place-items: center; width: 52px; height: 52px; border: 0; border-radius: 50%; background: rgba(74,72,73,.94); color: #fff; box-shadow: 0 4px 14px rgba(0,0,0,.35); cursor: pointer; }
   .mobile-reader-controls button:disabled { opacity: .3; }
-  .mobile-reader-controls .mobile-reader-play { width: 70px; height: 70px; }
-  .mobile-reader-tabbar {
-    position: fixed; left: 14px; right: 14px; bottom: 12px; z-index: 91;
-    display: flex; justify-content: space-around; align-items: center; padding: 8px 5px;
-    border: 1px solid rgba(255,255,255,.18); border-radius: 34px;
-    background: rgba(37,36,37,.9); backdrop-filter: blur(16px); color: #f5f5f5;
-  }
-  .mobile-reader-tabbar span { display: flex; flex-direction: column; align-items: center; gap: 2px; font-size: .68rem; opacity: .8; }
-  .mobile-reader-tabbar span.active { opacity: 1; }
-  .mobile-reader-tabbar span.active svg { padding: 4px 16px; margin: -4px 0 0; border-radius: 22px; background: rgba(255,255,255,.18); }
+  .mobile-reader-controls .mobile-reader-play { width: 68px; height: 68px; }
   .reading-selector-card {
     padding: 0.85rem;
   }
@@ -424,28 +443,27 @@
   .reading-select-group.reading-select-small { grid-column: 1 / -1; grid-row: 2; flex: unset; }
   .reading-select-group.reading-select-small label { display: none; }
   .reading-select-group.reading-select-small select { font-size: 1.05rem; padding: 12px; }
-  .reading-content { padding: 1.4rem .65rem 9rem; }
-  .verse-text { font-size: 1.48rem; }
   .reading-chapter-nav { padding: .65rem .8rem; }
   .reading-nav-btn { padding: .42rem .65rem; font-size: .8rem; }
   .reading-chapter-title { font-size: .9rem; }
 
+  .book-picker-sheet { max-height: 92vh; }
   .version-picker-backdrop { position: fixed; inset: 0; z-index: 310; display: flex; align-items: flex-end; background: rgba(0,0,0,.5); backdrop-filter: blur(6px); }
-  .version-picker-sheet { width: 100%; min-height: 82vh; box-sizing: border-box; padding: 12px 27px 28px; border-radius: 30px 30px 0 0; background: #252223; color: #f5f5f5; box-shadow: 0 -20px 60px rgba(0,0,0,.4); }
-  .version-picker-handle { width: 78px; height: 9px; margin: 0 auto 120px; border-radius: 8px; background: #7b777a; }
-  .version-picker-title-row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 38px; }
-  .version-picker-title-row h2 { margin: 0; font-size: 1.85rem; }
+  .version-picker-sheet { width: 100%; min-height: 70vh; max-height: 92vh; overflow-y: auto; box-sizing: border-box; padding: 12px 20px calc(28px + env(safe-area-inset-bottom, 0px)); border-radius: 30px 30px 0 0; background: #252223; color: #f5f5f5; box-shadow: 0 -20px 60px rgba(0,0,0,.4); }
+  .version-picker-handle { width: 78px; height: 9px; margin: 0 auto 36px; border-radius: 8px; background: #7b777a; }
+  .version-picker-title-row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px; }
+  .version-picker-title-row h2 { margin: 0; font-size: 1.6rem; }
   .version-picker-title-row div { display: flex; gap: 14px; }
   .version-picker-title-row button { display: grid; place-items: center; padding: 0; border: 0; background: transparent; color: #fff; cursor: pointer; }
   .version-picker-list { display: flex; flex-direction: column; gap: 16px; }
-  .version-picker-item { width: 100%; min-height: 112px; display: grid; grid-template-columns: 145px 1fr 34px 30px; gap: 18px; align-items: center; padding: 0 12px 0 0; border: 0; border-radius: 24px; background: transparent; color: #f5f5f5; text-align: left; cursor: pointer; }
+  .version-picker-item { width: 100%; min-height: 84px; display: grid; grid-template-columns: 74px minmax(0, 1fr) 26px 26px; gap: 14px; align-items: center; padding: 0 10px 0 0; border: 0; border-radius: 24px; background: transparent; color: #f5f5f5; text-align: left; cursor: pointer; }
   .version-picker-item.selected { padding-left: 12px; background: #3b3738; border: 1px solid rgba(255,255,255,.12); }
-  .version-code { height: 112px; display: flex; flex-direction: column; align-items: center; justify-content: center; border-radius: 12px; background: #3b3738; font: 700 1.25rem Georgia, serif; }
+  .version-code { height: 74px; display: flex; flex-direction: column; align-items: center; justify-content: center; border-radius: 12px; background: #3b3738; font: 700 1rem Georgia, serif; }
   .version-code b { margin-top: 6px; font-size: 1rem; }
   .version-details { display: flex; flex-direction: column; gap: 5px; min-width: 0; }
   .version-details small { color: #aaa6a8; font-size: .95rem; }
   .version-details strong { font-size: 1.12rem; line-height: 1.25; font-weight: 500; }
   .version-cloud, .version-more { color: #c5c1c3; }
-  .more-versions-btn { display: block; margin: 125px auto 30px; padding: 12px 27px; border: 0; border-radius: 28px; background: #514d4e; color: #fff; font-size: 1rem; font-weight: 600; cursor: pointer; }
+  .more-versions-btn { display: block; margin: 48px auto 18px; padding: 12px 27px; border: 0; border-radius: 28px; background: #514d4e; color: #fff; font-size: 1rem; font-weight: 600; cursor: pointer; }
   .version-picker-count { margin: 0; text-align: center; color: #aaa6a8; font-size: .92rem; }
 }
