@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
 import { useSearchParams } from 'react-router-dom'
-import { BookOpen, Copy, Highlighter, Volume2, Search, MoreHorizontal, Play, Pause, ChevronLeft, ChevronRight, Home, CalendarCheck, User, Settings, Plus, Cloud } from 'lucide-react'
+import { BookOpen, Copy, Highlighter, Volume2, Search, MoreHorizontal, Play, Pause, ChevronLeft, ChevronRight, Settings, Plus, Cloud } from 'lucide-react'
 import { useAuth, API_BASE } from '../context/AuthContext'
 import HighlightToolbar from '../components/HighlightToolbar'
 import Toast from '../components/Toast'
@@ -270,6 +270,15 @@ export default function ReadingPage() {
     }
   }, [activeTarget.version, activeTarget.book, activeTarget.chapter, loading])
 
+  // 書卷選單打開或切換書卷時，把展開中的書卷捲到最上方，直接看到章節格
+  useEffect(() => {
+    if (!bookPickerOpen) return
+    const frame = window.requestAnimationFrame(() => {
+      document.querySelector('.book-picker-book-group.expanded')?.scrollIntoView({ block: 'start' })
+    })
+    return () => window.cancelAnimationFrame(frame)
+  }, [bookPickerOpen, selection.book])
+
   // ─────────────────────────── 手機/桌面 連鎖選經流程 ───────────────────────────
 
   // 1. 選擇版本 -> 自動跳往下一個「書卷」選單（不滾動頁面、不發動跳轉）
@@ -485,6 +494,7 @@ export default function ReadingPage() {
         <button type="button" className="mobile-reader-book" onClick={() => setBookPickerOpen(true)}>
           {currentActiveBookName} {activeTarget.chapter}
         </button>
+        <span className="mobile-reader-divider" aria-hidden="true" />
         <button type="button" className="mobile-reader-version" onClick={() => setVersionPickerOpen(true)}>
           {activeTarget.version}
         </button>
@@ -592,7 +602,7 @@ export default function ReadingPage() {
               <div className="book-picker-header">
                 <button type="button" className="book-picker-close" onClick={() => setBookPickerOpen(false)}>×</button>
                 <h2>書卷</h2>
-                <span className="book-picker-more">•••</span>
+                <span className="book-picker-more" aria-hidden="true"><MoreHorizontal size={22} /></span>
               </div>
               <div className="book-picker-list">
                 <div className="book-picker-section-title">舊約</div>
@@ -732,13 +742,6 @@ export default function ReadingPage() {
             {isSpeaking ? <Pause size={28} fill="currentColor" /> : <Play size={28} fill="currentColor" />}
           </button>
           <button type="button" onClick={handleNextChapter} disabled={parseInt(activeTarget.chapter) >= (books.find(b => b.id === activeTarget.book)?.chapters || 50)} aria-label="下一章"><ChevronRight size={34} /></button>
-        </div>
-        <div className="mobile-reader-tabbar">
-          <span><Home size={22} />首頁</span>
-          <span className="active"><BookOpen size={22} />聖經</span>
-          <span><CalendarCheck size={22} />計畫</span>
-          <span><Search size={22} />發掘</span>
-          <span><User size={22} />你</span>
         </div>
       </div>
     </div>
