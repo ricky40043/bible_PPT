@@ -437,9 +437,13 @@ if os.path.exists(frontend_path):
         if request.headers.get('host', '').startswith('admin'):
             return FileResponse(os.path.join(os.path.dirname(os.path.abspath(__file__)), "admin.html"))
         file_path = os.path.join(frontend_path, full_path)
-        if os.path.isfile(file_path):
+        if os.path.isfile(file_path) and not file_path.endswith("index.html"):
             return FileResponse(file_path)
-        return FileResponse(os.path.join(frontend_path, "index.html"))
+        # index.html 不可被瀏覽器快取，否則部署後手機（iOS Safari / App 內建瀏覽器）仍載入舊版 JS/CSS
+        return FileResponse(
+            os.path.join(frontend_path, "index.html"),
+            headers={"Cache-Control": "no-cache, no-store, must-revalidate"},
+        )
 
 if __name__ == "__main__":
     import uvicorn
