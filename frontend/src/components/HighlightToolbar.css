@@ -13,6 +13,8 @@
   z-index: 50;
   animation: popIn 0.2s cubic-bezier(0.16, 1, 0.3, 1);
   white-space: nowrap;
+  max-width: calc(100vw - 24px);
+  box-sizing: border-box;
 }
 
 .toolbar-label {
@@ -20,6 +22,7 @@
   font-weight: 600;
   color: #94a3b8;
   padding-right: 4px;
+  white-space: nowrap;
 }
 
 .color-palette {

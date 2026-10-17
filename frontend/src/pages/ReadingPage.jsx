@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useCallback } from 'react'
+import { useState, useEffect, useLayoutEffect, useRef, useCallback } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import { BookOpen, Copy, Highlighter, Volume2, Search, MoreHorizontal, Play, Pause, ChevronLeft, ChevronRight, Settings, Plus, Cloud } from 'lucide-react'
 import { useAuth, API_BASE } from '../context/AuthContext'
@@ -6,7 +6,7 @@ import HighlightToolbar from '../components/HighlightToolbar'
 import Toast from '../components/Toast'
 import './ReadingPage.css'
 
-export const BIBLE_BOOKS = [
+const BIBLE_BOOKS = [
   { id: "GEN", name: "創世記", chapters: 50 }, { id: "EXO", name: "出埃及記", chapters: 40 },
   { id: "LEV", name: "利未記", chapters: 27 }, { id: "NUM", name: "民數記", chapters: 36 },
   { id: "DEU", name: "申命記", chapters: 34 }, { id: "JOS", name: "約書亞記", chapters: 24 },
@@ -42,7 +42,7 @@ export const BIBLE_BOOKS = [
   { id: "JUD", name: "猶大書", chapters: 1 }, { id: "REV", name: "啟示錄", chapters: 22 }
 ]
 
-export const BIBLE_VERSIONS = [
+const BIBLE_VERSIONS = [
   { id: "CUNP", name: "新標點和合本" },
   { id: "RCUV", name: "和合本修訂版" },
   { id: "CCB", name: "當代譯本" }
@@ -52,8 +52,13 @@ const memoryVerseCache = new Map()
 
 function BookPickerItem({ book, selection, expanded, onChooseBook, onChooseChapter }) {
   return (
-    <div className={`book-picker-book-group ${expanded ? 'expanded' : ''}`}>
-      <button type="button" className={`book-picker-item ${expanded ? 'selected' : ''}`} onClick={() => onChooseBook(book.id)}>
+    <div className={`book-picker-book-group ${expanded ? 'expanded' : ''}`} data-book-id={book.id}>
+      <button
+        type="button"
+        className={`book-picker-item ${expanded ? 'selected' : ''}`}
+        aria-expanded={expanded}
+        onClick={(event) => onChooseBook(book.id, event.currentTarget)}
+      >
         {book.name}
       </button>
       {expanded && (
@@ -92,7 +97,9 @@ export default function ReadingPage() {
       try {
         const p = JSON.parse(local)
         return { version: p.version || 'CUNP', book: p.book || 'GEN', chapter: String(p.chapter || '1'), verse: String(p.verse_num || '1') }
-      } catch (e) {}
+      } catch {
+        localStorage.removeItem('bible_local_progress')
+      }
     }
     return { version: 'CUNP', book: 'GEN', chapter: '1', verse: '1' }
   }
@@ -108,7 +115,8 @@ export default function ReadingPage() {
   
   // 經文標註與操作狀態
   const [highlights, setHighlights] = useState({})
-  const [activeVerseNum, setActiveVerseNum] = useState(null)
+  const [selectedVerseNums, setSelectedVerseNums] = useState([])
+  const [toolbarVerseNum, setToolbarVerseNum] = useState(null)
   const [toastMsg, setToastMsg] = useState(null)
   const [toastType, setToastType] = useState('success')
   const [bookPickerOpen, setBookPickerOpen] = useState(false)
@@ -120,17 +128,24 @@ export default function ReadingPage() {
 
   const bookSelectRef = useRef(null)
   const chapterSelectRef = useRef(null)
+  const bookPickerListRef = useRef(null)
+  const bookPickerAnchorRef = useRef(null)
 
   const contentRef = useRef(null)
   const touchStartX = useRef(null)
   const touchStartY = useRef(null)
   const isInitialProgressLoaded = useRef(false)
+  const saveProgressRef = useRef(saveProgress)
+
+  useEffect(() => {
+    saveProgressRef.current = saveProgress
+  }, [saveProgress])
 
   useEffect(() => {
     try {
       const saved = JSON.parse(localStorage.getItem('bible_recent_reads') || '[]')
       setRecentReads(Array.isArray(saved) ? saved : [])
-    } catch (e) {
+    } catch {
       setRecentReads([])
     }
   }, [])
@@ -190,6 +205,9 @@ export default function ReadingPage() {
   useEffect(() => {
     if (!activeTarget.book || !activeTarget.chapter || !activeTarget.version) return
 
+    setSelectedVerseNums([])
+    setToolbarVerseNum(null)
+
     const cacheKey = `${activeTarget.version}_${activeTarget.book}_${activeTarget.chapter}`
     const cachedData = memoryVerseCache.get(cacheKey)
 
@@ -197,16 +215,15 @@ export default function ReadingPage() {
       setChapterContent(cachedData)
       setLoading(false)
       setError(null)
-        fetchHighlights(activeTarget.version, activeTarget.book, activeTarget.chapter)
-        saveProgress(activeTarget.version, activeTarget.book, parseInt(activeTarget.chapter), parseInt(activeTarget.verse || 1))
-        rememberRecentRead(activeTarget)
-        return
+      fetchHighlights(activeTarget.version, activeTarget.book, activeTarget.chapter)
+      saveProgressRef.current(activeTarget.version, activeTarget.book, parseInt(activeTarget.chapter), parseInt(activeTarget.verse || 1))
+      rememberRecentRead(activeTarget)
+      return
     }
 
     const abortCtrl = new AbortController()
     setLoading(true)
     setError(null)
-    setActiveVerseNum(null)
 
     const fetchChapter = async () => {
       try {
@@ -221,7 +238,7 @@ export default function ReadingPage() {
         memoryVerseCache.set(cacheKey, data)
         setChapterContent(data)
         fetchHighlights(activeTarget.version, activeTarget.book, activeTarget.chapter)
-        saveProgress(activeTarget.version, activeTarget.book, parseInt(activeTarget.chapter), parseInt(activeTarget.verse || 1))
+        saveProgressRef.current(activeTarget.version, activeTarget.book, parseInt(activeTarget.chapter), parseInt(activeTarget.verse || 1))
         rememberRecentRead(activeTarget)
       } catch (err) {
         if (err.name !== 'AbortError') {
@@ -271,18 +288,37 @@ export default function ReadingPage() {
     }
   }, [activeTarget.version, activeTarget.book, activeTarget.chapter, loading])
 
-  // 打開書卷選單時展開目前閱讀的書卷，並捲到它的位置；之後點書卷只展開/收合，不再自動捲動
+  // 打開書卷選單時只展開目前閱讀的書卷，定位也只改變彈窗內的捲動區。
   const openBookPicker = () => {
     setExpandedBook(activeTarget.book)
     setBookPickerOpen(true)
   }
-  useEffect(() => {
+
+  useLayoutEffect(() => {
     if (!bookPickerOpen) return
-    const frame = window.requestAnimationFrame(() => {
-      document.querySelector('.book-picker-book-group.expanded')?.scrollIntoView({ block: 'start' })
-    })
-    return () => window.cancelAnimationFrame(frame)
-  }, [bookPickerOpen])
+    const list = bookPickerListRef.current
+    const selectedGroup = list?.querySelector(`[data-book-id="${expandedBook}"]`)
+    if (!list || !selectedGroup) return
+
+    const anchor = bookPickerAnchorRef.current
+    if (anchor?.bookId === expandedBook) {
+      const nextTop = selectedGroup.getBoundingClientRect().top
+      list.scrollTop += nextTop - anchor.viewportTop
+      bookPickerAnchorRef.current = null
+      return
+    }
+
+    list.scrollTop = Math.max(0, selectedGroup.offsetTop - 10)
+  }, [bookPickerOpen, expandedBook])
+
+  useEffect(() => {
+    if (!bookPickerOpen && !versionPickerOpen) return
+    const previousOverflow = document.body.style.overflow
+    document.body.style.overflow = 'hidden'
+    return () => {
+      document.body.style.overflow = previousOverflow
+    }
+  }, [bookPickerOpen, versionPickerOpen])
 
   // ─────────────────────────── 手機/桌面 連鎖選經流程 ───────────────────────────
 
@@ -304,8 +340,10 @@ export default function ReadingPage() {
     }, 50)
   }
 
-  const chooseBook = (bookId) => {
-    setExpandedBook(prev => prev === bookId ? null : bookId)
+  const chooseBook = (bookId, button) => {
+    if (expandedBook === bookId) return
+    bookPickerAnchorRef.current = { bookId, viewportTop: button.getBoundingClientRect().top }
+    setExpandedBook(bookId)
   }
 
 
@@ -376,8 +414,24 @@ export default function ReadingPage() {
   const handlePrevChapter = () => goToChapter(prevTarget)
   const handleNextChapter = () => goToChapter(nextTarget)
 
+  const clearVerseSelection = () => {
+    setSelectedVerseNums([])
+    setToolbarVerseNum(null)
+  }
+
+  const toggleVerseSelection = (verseNum) => {
+    if (selectedVerseNums.includes(verseNum)) {
+      const next = selectedVerseNums.filter(num => num !== verseNum)
+      setSelectedVerseNums(next)
+      if (toolbarVerseNum === verseNum) setToolbarVerseNum(next.at(-1) ?? null)
+    } else {
+      setToolbarVerseNum(verseNum)
+      setSelectedVerseNums(prev => [...prev, verseNum])
+    }
+  }
+
   // ─────────────────────────── 畫線標註（存入 SQLite 資料庫，未登入禁止） ───────────────────────────
-  const handleSelectHighlightColor = async (verseNum, color) => {
+  const handleSelectHighlightColor = async (verseNums, color) => {
     // 檢查登入狀態：未登入禁止做筆記
     if (!user || !token) {
       showToast('請先登入帳號，才能做筆記與畫線標註（存入資料庫）', 'info')
@@ -385,12 +439,16 @@ export default function ReadingPage() {
       return
     }
 
-    const num = parseInt(verseNum)
-    setHighlights(prev => ({ ...prev, [num]: color }))
-    setActiveVerseNum(null)
+    const nums = verseNums.map(Number)
+    setHighlights(prev => {
+      const next = { ...prev }
+      nums.forEach(num => { next[num] = color })
+      return next
+    })
+    clearVerseSelection()
 
     try {
-      const res = await fetch(`${API_BASE}/api/highlights`, {
+      const responses = await Promise.all(nums.map(num => fetch(`${API_BASE}/api/highlights`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -401,51 +459,55 @@ export default function ReadingPage() {
           book: activeTarget.book,
           chapter: parseInt(activeTarget.chapter),
           verse_num: num,
-          color: color,
+          color,
         }),
-      })
-      if (res.ok) {
-        showToast(`已標註第 ${num} 節（已存入資料庫）`)
-      } else {
-        throw new Error('儲存失敗')
-      }
-    } catch (err) {
+      })))
+      if (responses.some(res => !res.ok)) throw new Error('儲存失敗')
+      showToast(nums.length > 1 ? `已標註 ${nums.length} 節經文（已存入資料庫）` : `已標註第 ${nums[0]} 節（已存入資料庫）`)
+    } catch {
       showToast('標註儲存失敗', 'error')
     }
   }
 
-  const handleRemoveHighlight = async (verseNum) => {
+  const handleRemoveHighlight = async (verseNums) => {
     if (!user || !token) {
       showToast('請先登入帳號', 'info')
       openAuthModal('login')
       return
     }
 
-    const num = parseInt(verseNum)
+    const nums = verseNums.map(Number)
     setHighlights(prev => {
       const copy = { ...prev }
-      delete copy[num]
+      nums.forEach(num => delete copy[num])
       return copy
     })
-    setActiveVerseNum(null)
+    clearVerseSelection()
 
     try {
-      await fetch(`${API_BASE}/api/highlights?version=${activeTarget.version}&book=${activeTarget.book}&chapter=${activeTarget.chapter}&verse_num=${num}`, {
+      const responses = await Promise.all(nums.map(num => fetch(`${API_BASE}/api/highlights?version=${activeTarget.version}&book=${activeTarget.book}&chapter=${activeTarget.chapter}&verse_num=${num}`, {
         method: 'DELETE',
         headers: { Authorization: `Bearer ${token}` },
-      })
-      showToast(`已清除第 ${num} 節標註（資料庫已更新）`)
-    } catch (err) {}
+      })))
+      if (responses.some(res => !res.ok)) throw new Error('刪除失敗')
+      showToast(nums.length > 1 ? `已清除 ${nums.length} 節標註（資料庫已更新）` : `已清除第 ${nums[0]} 節標註（資料庫已更新）`)
+    } catch {
+      showToast('清除標註失敗', 'error')
+    }
   }
 
-  // 複製經文（免登入即可複製）
-  const handleCopyVerse = (verse) => {
+  // 複製已選經文（免登入即可複製）
+  const handleCopyVerses = (verseNums) => {
     const bookName = books.find(b => b.id === activeTarget.book)?.name || activeTarget.book
-    const versionName = versions.find(v => v.id === activeTarget.version)?.name || activeTarget.version
-    const formatted = `【${bookName} ${activeTarget.chapter}:${verse.num} ${activeTarget.version}】${verse.text}`
+    const selectedVerses = chapterContent.filter(verse => verseNums.includes(parseInt(verse.num)))
+    if (!selectedVerses.length) return
+    const verseLabel = selectedVerses.map(verse => verse.num).join('、')
+    const formatted = selectedVerses.length === 1
+      ? `【${bookName} ${activeTarget.chapter}:${selectedVerses[0].num} ${activeTarget.version}】${selectedVerses[0].text}`
+      : `【${bookName} ${activeTarget.chapter}:${verseLabel} ${activeTarget.version}】\n${selectedVerses.map(verse => `${verse.num}. ${verse.text}`).join('\n')}`
     navigator.clipboard.writeText(formatted)
-    showToast(`已複製經文：${bookName} ${activeTarget.chapter}:${verse.num}`)
-    setActiveVerseNum(null)
+    showToast(selectedVerses.length > 1 ? `已複製 ${selectedVerses.length} 節經文` : `已複製經文：${bookName} ${activeTarget.chapter}:${selectedVerses[0].num}`)
+    clearVerseSelection()
   }
 
   const handleCopyEntireChapter = () => {
@@ -499,7 +561,7 @@ export default function ReadingPage() {
   const currentActiveVersionName = versions.find(v => v.id === activeTarget.version)?.name || activeTarget.version
 
   return (
-    <div className="reading-page-wrapper" onClick={() => setActiveVerseNum(null)}>
+    <div className="reading-page-wrapper" onClick={clearVerseSelection}>
       <Toast message={toastMsg} type={toastType} onClose={() => setToastMsg(null)} />
 
       <div className="mobile-reader-toolbar">
@@ -544,6 +606,39 @@ export default function ReadingPage() {
         </div>
       )}
 
+      {bookPickerOpen && (
+        <div className="book-picker-backdrop" onClick={() => setBookPickerOpen(false)}>
+          <section className="book-picker-sheet" role="dialog" aria-modal="true" aria-label="選擇書卷與章節" onClick={e => e.stopPropagation()}>
+            <div className="book-picker-header">
+              <button type="button" className="book-picker-close" aria-label="關閉書卷選單" onClick={() => setBookPickerOpen(false)}>×</button>
+              <h2>書卷</h2>
+              <span className="book-picker-more" aria-hidden="true"><MoreHorizontal size={22} /></span>
+            </div>
+            <div className="book-picker-list" ref={bookPickerListRef}>
+              <div className="book-picker-section-title">舊約</div>
+              {books.slice(0, 39).map(book => <BookPickerItem key={book.id} book={book} selection={selection} expanded={expandedBook === book.id} onChooseBook={chooseBook} onChooseChapter={choosePickerChapter} />)}
+              <div className="book-picker-section-title">新約</div>
+              {books.slice(39).map(book => <BookPickerItem key={book.id} book={book} selection={selection} expanded={expandedBook === book.id} onChooseBook={chooseBook} onChooseChapter={choosePickerChapter} />)}
+            </div>
+            {recentReads.length > 0 && (
+              <div className="book-picker-recent">
+                <h3>最近使用 <span>›</span></h3>
+                <div className="recent-read-grid">
+                  {recentReads.slice(0, 4).map(item => {
+                    const book = books.find(b => b.id === item.book)
+                    const version = versions.find(v => v.id === item.version)
+                    return <button key={`${item.version}-${item.book}-${item.chapter}`} type="button" className="recent-read-card" onClick={() => openRecentRead(item)}>
+                      <strong>{book?.name || item.book} {item.chapter}</strong>
+                      <small>{version?.name || item.version}</small>
+                    </button>
+                  })}
+                </div>
+              </div>
+            )}
+          </section>
+        </div>
+      )}
+
       <div className="app-container">
         <div className="header">
           <div className="header-title-row">
@@ -554,7 +649,7 @@ export default function ReadingPage() {
               </button>
             )}
           </div>
-          <p>選好版本、書卷與章後立即開始閱讀；點擊經文可<b>畫線</b>或<b>複製</b></p>
+          <p>選好版本、書卷與章後立即開始閱讀；點擊經文可<b>多選</b>、<b>畫線</b>或<b>複製</b></p>
         </div>
 
         {error && <div className="error-msg">{error}</div>}
@@ -608,39 +703,6 @@ export default function ReadingPage() {
           </div>
         </div>
 
-        {bookPickerOpen && (
-          <div className="book-picker-backdrop" onClick={() => setBookPickerOpen(false)}>
-            <section className="book-picker-sheet" onClick={e => e.stopPropagation()}>
-              <div className="book-picker-header">
-                <button type="button" className="book-picker-close" onClick={() => setBookPickerOpen(false)}>×</button>
-                <h2>書卷</h2>
-                <span className="book-picker-more" aria-hidden="true"><MoreHorizontal size={22} /></span>
-              </div>
-              <div className="book-picker-list">
-                <div className="book-picker-section-title">舊約</div>
-                {books.slice(0, 39).map(book => <BookPickerItem key={book.id} book={book} selection={selection} expanded={expandedBook === book.id} onChooseBook={chooseBook} onChooseChapter={choosePickerChapter} />)}
-                <div className="book-picker-section-title">新約</div>
-                {books.slice(39).map(book => <BookPickerItem key={book.id} book={book} selection={selection} expanded={expandedBook === book.id} onChooseBook={chooseBook} onChooseChapter={choosePickerChapter} />)}
-              </div>
-              {recentReads.length > 0 && (
-                <div className="book-picker-recent">
-                  <h3>最近使用 <span>›</span></h3>
-                  <div className="recent-read-grid">
-                    {recentReads.slice(0, 4).map(item => {
-                      const book = books.find(b => b.id === item.book)
-                      const version = versions.find(v => v.id === item.version)
-                      return <button key={`${item.version}-${item.book}-${item.chapter}`} type="button" className="recent-read-card" onClick={() => openRecentRead(item)}>
-                        <strong>{book?.name || item.book} {item.chapter}</strong>
-                        <small>{version?.name || item.version}</small>
-                      </button>
-                    })}
-                  </div>
-                </div>
-              )}
-            </section>
-          </div>
-        )}
-
         {/* 章節導航 */}
         <div className="reading-chapter-nav">
           <button
@@ -682,7 +744,7 @@ export default function ReadingPage() {
                   <span className="reading-version-tag">{currentActiveVersionName}</span>
                 </div>
                 <div className="reading-tips">
-                  <Highlighter size={14} /> {user ? '點擊經文畫線標註（已同步資料庫）' : '登入後可進行經文畫線標註與個人讀經筆記'}
+                  <Highlighter size={14} /> {user ? '點擊可多選經文並畫線標註（已同步資料庫）' : '點擊可多選與複製；登入後可畫線標註'}
                 </div>
               </div>
 
@@ -690,31 +752,43 @@ export default function ReadingPage() {
                 {chapterContent.map((verse) => {
                   const verseNumInt = parseInt(verse.num)
                   const hlColor = highlights[verseNumInt]
-                  const isActive = activeVerseNum === verseNumInt
+                  const isSelected = selectedVerseNums.includes(verseNumInt)
+                  const showsToolbar = toolbarVerseNum === verseNumInt && isSelected
 
                   return (
                     <div
                       key={verse.num}
                       id={`verse-${verse.num}`}
-                      className={`verse-item ${hlColor ? 'highlighted' : ''} ${isActive ? 'active-toolbar-verse' : ''}`}
+                      className={`verse-item ${hlColor ? 'highlighted' : ''} ${isSelected ? 'selected-verse' : ''}`}
                       style={hlColor ? { '--hl-bg': hlColor } : {}}
+                      role="button"
+                      tabIndex={0}
+                      aria-pressed={isSelected}
                       onClick={(e) => {
                         e.stopPropagation()
-                        setActiveVerseNum(prev => prev === verseNumInt ? null : verseNumInt)
+                        toggleVerseSelection(verseNumInt)
+                      }}
+                      onKeyDown={(e) => {
+                        if (e.key !== 'Enter' && e.key !== ' ') return
+                        e.preventDefault()
+                        e.stopPropagation()
+                        toggleVerseSelection(verseNumInt)
                       }}
                     >
                       <span className="verse-num">{verse.num}</span>
                       <span className="verse-text">{verse.text}</span>
 
                       {/* 懸浮/點擊色票工具列 */}
-                      {isActive && (
+                      {showsToolbar && (
                         <HighlightToolbar
                           verseNum={verse.num}
-                          currentColor={hlColor}
-                          onSelectColor={(color) => handleSelectHighlightColor(verse.num, color)}
-                          onRemoveColor={() => handleRemoveHighlight(verse.num)}
-                          onCopyVerse={() => handleCopyVerse(verse)}
-                          onClose={() => setActiveVerseNum(null)}
+                          selectionCount={selectedVerseNums.length}
+                          currentColor={selectedVerseNums.every(num => highlights[num] === hlColor) ? hlColor : null}
+                          canRemove={selectedVerseNums.some(num => Boolean(highlights[num]))}
+                          onSelectColor={(color) => handleSelectHighlightColor(selectedVerseNums, color)}
+                          onRemoveColor={() => handleRemoveHighlight(selectedVerseNums)}
+                          onCopyVerse={() => handleCopyVerses(selectedVerseNums)}
+                          onClose={clearVerseSelection}
                         />
                       )}
                     </div>
