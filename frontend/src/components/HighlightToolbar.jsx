@@ -1,7 +1,7 @@
-import { Copy, Trash2, Check } from 'lucide-react'
+import { Copy, Trash2, Check, X } from 'lucide-react'
 import './HighlightToolbar.css'
 
-export const HIGHLIGHT_COLORS = [
+const HIGHLIGHT_COLORS = [
   { id: 'yellow', hex: '#fef08a', name: '亮黃', labelColor: '#854d0e' },
   { id: 'green', hex: '#bbf7d0', name: '清新綠', labelColor: '#166534' },
   { id: 'blue', hex: '#bae6fd', name: '天空藍', labelColor: '#075985' },
@@ -16,14 +16,19 @@ export default function HighlightToolbar({
   onRemoveColor,
   onCopyVerse,
   onClose,
+  selectionCount = 1,
+  canRemove = Boolean(currentColor),
 }) {
+  const selectionLabel = selectionCount > 1 ? `已選 ${selectionCount} 節` : `第 ${verseNum} 節`
+
   return (
-    <div className="highlight-toolbar" onClick={(e) => e.stopPropagation()}>
-      <div className="toolbar-label">第 {verseNum} 節</div>
+    <div className="highlight-toolbar" role="toolbar" aria-label={`${selectionLabel}操作`} onClick={(e) => e.stopPropagation()}>
+      <div className="toolbar-label">{selectionLabel}</div>
 
       <div className="color-palette">
         {HIGHLIGHT_COLORS.map((c) => (
           <button
+            type="button"
             key={c.id}
             className={`color-btn ${currentColor === c.hex ? 'active' : ''}`}
             style={{ backgroundColor: c.hex }}
@@ -37,8 +42,9 @@ export default function HighlightToolbar({
 
       <div className="toolbar-divider" />
 
-      {currentColor && (
+      {canRemove && (
         <button
+          type="button"
           className="tool-btn danger"
           title="移除畫線標註"
           onClick={onRemoveColor}
@@ -48,11 +54,22 @@ export default function HighlightToolbar({
       )}
 
       <button
+        type="button"
         className="tool-btn"
-        title="複製此節經文"
+        title={selectionCount > 1 ? '複製已選經文' : '複製此節經文'}
         onClick={onCopyVerse}
       >
         <Copy size={15} />
+      </button>
+
+      <button
+        type="button"
+        className="tool-btn"
+        title="取消選取"
+        aria-label="取消選取"
+        onClick={onClose}
+      >
+        <X size={15} />
       </button>
     </div>
   )
