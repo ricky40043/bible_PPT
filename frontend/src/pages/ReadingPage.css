@@ -392,7 +392,13 @@
 
 @media (max-width: 600px) {
   /* 手機讀經：上下堆疊，不能沿用桌面的橫向 flex，否則工具列和經文會被擠成左右兩欄 */
-  .reading-page-wrapper { display: block; min-height: calc(100vh - 64px); padding-bottom: 0; }
+  /* 閱讀頁要覆蓋整個手機可視區，避免 body 的紫色背景從內容下方透出。 */
+  .reading-page-wrapper {
+    display: block;
+    min-height: calc(100vh - 64px);
+    padding-bottom: 0;
+    background: #121212;
+  }
   /* backdrop-filter / transform 會讓 position: fixed 改成相對容器定位，浮動按鈕會跑到內容最底部 */
   .reading-page-wrapper .app-container {
     width: 100%; max-width: none; margin: 0; padding: 0 1.25rem; box-sizing: border-box;
