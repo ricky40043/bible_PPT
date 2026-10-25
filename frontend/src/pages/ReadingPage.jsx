@@ -527,7 +527,8 @@ export default function ReadingPage() {
       setIsSpeaking(false)
       return
     }
-    const text = chapterContent.map(v => `${v.num}。${v.text}`).join(' ')
+    // 朗讀只使用經文內容，避免把節號（例如「1、2、3」）唸出來。
+    const text = chapterContent.map(v => v.text).join(' ')
     const utterance = new SpeechSynthesisUtterance(text)
     utterance.lang = 'zh-TW'
     utterance.rate = 0.9
@@ -731,13 +732,14 @@ export default function ReadingPage() {
           onTouchStart={handleTouchStart}
           onTouchEnd={handleTouchEnd}
         >
-          {loading ? (
+          {loading && !chapterContent.length ? (
             <div className="reading-loading">
               <span className="loader" />
               <span>載入經文中...</span>
             </div>
           ) : chapterContent.length > 0 ? (
             <>
+              {loading && <div className="reading-inline-loading" role="status">正在載入新章節…</div>}
               <div className="reading-header-bar">
                 <div className="reading-title-wrap">
                   <span className="reading-book-title">{currentActiveBookName} 第 {activeTarget.chapter} 章</span>
