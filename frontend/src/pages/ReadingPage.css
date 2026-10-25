@@ -85,6 +85,7 @@
   overflow: hidden;
   display: flex;
   flex-direction: column;
+  min-height: 0;
   background: #121212;
   color: #f5f5f5;
   border: 1px solid rgba(255,255,255,.12);
@@ -110,12 +111,16 @@
 .book-picker-book-group { scroll-margin-top: 10px; }
 .book-picker-list {
   position: relative;
-  flex: 1;
+  /* Explicitly give the flex child a shrinkable basis.  Without this,
+     some mobile WebViews keep the list at its min-content height and the
+     first reverse swipe is handled by the fixed backdrop instead. */
+  flex: 1 1 0;
+  height: 0;
   min-height: 0;
-  overflow-y: auto;
+  overflow-y: scroll;
   padding: 10px 0 14px;
   -webkit-overflow-scrolling: touch;
-  overscroll-behavior-y: contain;
+  overscroll-behavior: contain;
   touch-action: pan-y;
   overflow-anchor: none;
 }
