@@ -57,6 +57,7 @@ export default function NavBar() {
               )}
               <span className="user-name">{user.username}</span>
             </div>
+            <a href="/api/auth/password-help#change" className="navbar-logout-btn">修改密碼</a>
             <button className="navbar-logout-btn" title="登出" onClick={logout}>
               <LogOut size={16} />
             </button>

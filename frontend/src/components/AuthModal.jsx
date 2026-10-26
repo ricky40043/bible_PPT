@@ -96,6 +96,7 @@ export default function AuthModal() {
 
           <div className="auth-input-group">
             <label><Lock size={14} /> 密碼 (至少 6 個字元)</label>
+            <a href="/api/auth/password-help">忘記密碼／修改密碼</a>
             <input
               type="password"
               required

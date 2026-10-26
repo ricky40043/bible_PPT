@@ -17,6 +17,7 @@ RUN pip install --no-cache-dir -r requirements.txt gunicorn
 COPY backend/*.py ./
 # 後台頁（使用紀錄）
 COPY backend/admin.html ./
+COPY backend/account_recovery.html ./
 
 # 複製經文資料庫
 COPY backend/data ./data

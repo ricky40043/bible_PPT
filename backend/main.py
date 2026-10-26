@@ -32,6 +32,8 @@ os.makedirs(DATA_DIR, exist_ok=True)
 usage_db.init_db(os.path.join(DATA_DIR, 'usage.db'))
 bible_db.init_bible_db(os.path.join(DATA_DIR, 'bible.db'))
 user_db.init_user_db(os.path.join(DATA_DIR, 'users.db'))
+from account_recovery import register_recovery
+register_recovery(app)
 
 # 檢查資料庫是否已滿 3,567 章，若未滿則在背景自動補齊全量經文
 def _auto_sync_if_needed():
@@ -211,19 +213,13 @@ def login_user(req: LoginRequest):
 
 @app.post("/api/auth/google")
 def google_auth(req: GoogleLoginRequest):
-    email = req.email
-    name = req.name or ""
-    google_id = req.google_id or ""
-    avatar_url = req.avatar_url or ""
-    
-    if req.credential:
-        verified = auth.verify_google_id_token(req.credential)
-        if verified:
-            email = verified.get("email") or email
-            name = verified.get("name") or name
-            google_id = verified.get("google_id") or google_id
-            avatar_url = verified.get("avatar_url") or avatar_url
-            
+    verified = auth.verify_google_id_token(req.credential) if req.credential else None
+    if not verified:
+        raise HTTPException(status_code=401, detail="Google 認證失敗，請重新登入")
+    email = verified.get('email')
+    name = verified.get('name') or ''
+    google_id = verified.get('google_id') or ''
+    avatar_url = verified.get('avatar_url') or ''
     if not email:
         raise HTTPException(status_code=400, detail="Google 認證失敗，未能取得信箱")
         
