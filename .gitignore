@@ -17,3 +17,5 @@ test_gen_*.pptx
 test_*.pptx
 
 node_modules/
+
+.recovery-mail.env

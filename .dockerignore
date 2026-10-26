@@ -1,0 +1,7 @@
+.env
+.env.*
+.recovery-mail.env
+.git
+backend/venv
+frontend/node_modules
+__pycache__
